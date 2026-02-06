@@ -28,10 +28,15 @@ AI Jarvis é um projeto de **assistente de Inteligência Artificial local**, off
 ## 📂 Estrutura do projeto
 
 ai_jarvis/
+
 ├── core/ # Agente, memória, planner, LLM
+
 ├── tools/ # Ferramentas (câmera, gravação, etc.)
+
 ├── interfaces/ # Interface de texto (futuro: voz, web)
+
 ├── recordings/ # Gravações de vídeo
+
 └── main.py
 
 
