@@ -39,6 +39,9 @@ Responda de forma clara e objetiva.
 """
 
     def run(self, user_input: str) -> str:
+        if not user_input.strip():
+            return "Digite um comando válido."
+
         # salva input do usuário
         self.short_memory.add("Usuário", user_input)
 
@@ -56,7 +59,6 @@ Responda de forma clara e objetiva.
                 **decision.get("args", {})
             )
 
-            # se a ferramenta retornar evento estruturado
             if isinstance(result, dict) and result.get("event") == "person_detected":
                 record_response = self.tools.execute(
                     "start_recording",
@@ -74,8 +76,10 @@ Responda de forma clara e objetiva.
         else:
             response = "Decisão desconhecida"
 
-        # salva resposta da IA
-        self.short_memory.add("IA", response)
-        self.long_memory.add(f"Usuário: {user_input} | IA: {response}")
+        # salva resposta somente se válida
+        if response and str(response).strip():
+            self.short_memory.add("IA", response)
+            self.long_memory.add(f"Usuário: {user_input} | IA: {response}")
 
         return response
+
