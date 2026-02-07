@@ -3,7 +3,8 @@ from core.planner import Planner
 from core.llm import LocalLLM
 from tools.manager import ToolManager
 from tools.recorder import RecorderTool
-from tools.camera import CameraTool
+from core.surveillance import SurveillanceService
+import time
 
 
 class Agent:
@@ -14,10 +15,28 @@ class Agent:
         self.llm = LocalLLM()
         self.tools = ToolManager()
         self.tools.register(RecorderTool())
-        self.tools.register(CameraTool())
 
+        self.last_record_time = 0
+        self.record_cooldown = 30
 
+        self.surveillance = SurveillanceService(
+            callback=self.handle_surveillance_event
+        )
 
+    def handle_surveillance_event(self, event: dict):
+        now = time.time()
+
+        if event.get("event") == "person_detected":
+            if now - self.last_record_time < self.record_cooldown:
+                return
+
+            self.last_record_time = now
+            print("🚨 Evento recebido da vigilância.")
+
+            self.tools.execute(
+                "start_recording",
+                duration=20
+            )
 
     def build_prompt(self, user_input: str) -> str:
         short_context = self.short_memory.get_context()
@@ -42,44 +61,31 @@ Responda de forma clara e objetiva.
         if not user_input.strip():
             return "Digite um comando válido."
 
-        # salva input do usuário
         self.short_memory.add("Usuário", user_input)
 
-        # constrói prompt e decisão
         prompt = self.build_prompt(user_input)
         decision = self.planner.decide(user_input)
 
-        # decisão de resposta
+        if "vigiar" in user_input.lower():
+            return self.surveillance.start()
+
+        if "parar vigilância" in user_input.lower():
+            return self.surveillance.stop()
+
         if decision["type"] == "respond":
             response = self.llm.generate(prompt)
 
         elif decision["type"] == "tool":
-            result = self.tools.execute(
+            response = self.tools.execute(
                 decision["name"],
                 **decision.get("args", {})
             )
 
-            if isinstance(result, dict) and result.get("event") == "person_detected":
-                record_response = self.tools.execute(
-                    "start_recording",
-                    duration=20
-                )
-
-                response = (
-                    "🚨 Pessoa detectada.\n"
-                    "🎥 Gravação iniciada automaticamente.\n"
-                    f"{record_response}"
-                )
-            else:
-                response = result
-
         else:
             response = "Decisão desconhecida"
 
-        # salva resposta somente se válida
         if response and str(response).strip():
             self.short_memory.add("IA", response)
             self.long_memory.add(f"Usuário: {user_input} | IA: {response}")
 
         return response
-
