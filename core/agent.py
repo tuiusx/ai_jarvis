@@ -1,10 +1,10 @@
+import time
 from core.memory import ShortTermMemory, LongTermMemory
 from core.planner import Planner
 from core.llm import LocalLLM
 from tools.manager import ToolManager
 from tools.recorder import RecorderTool
 from core.surveillance import SurveillanceService
-import time
 
 
 class Agent:
@@ -13,6 +13,7 @@ class Agent:
         self.long_memory = LongTermMemory()
         self.planner = Planner()
         self.llm = LocalLLM()
+
         self.tools = ToolManager()
         self.tools.register(RecorderTool())
 
@@ -23,6 +24,10 @@ class Agent:
             callback=self.handle_surveillance_event
         )
 
+    # =============================
+    # EVENTOS DA VIGILÂNCIA
+    # =============================
+
     def handle_surveillance_event(self, event: dict):
         now = time.time()
 
@@ -31,12 +36,16 @@ class Agent:
                 return
 
             self.last_record_time = now
-            print("🚨 Evento recebido da vigilância.")
+            print("\n🚨 Pessoa detectada – gravação iniciada.")
 
             self.tools.execute(
                 "start_recording",
                 duration=20
             )
+
+    # =============================
+    # PROMPT
+    # =============================
 
     def build_prompt(self, user_input: str) -> str:
         short_context = self.short_memory.get_context()
@@ -57,35 +66,36 @@ Usuário:
 Responda de forma clara e objetiva.
 """
 
+    # =============================
+    # LOOP PRINCIPAL
+    # =============================
+
     def run(self, user_input: str) -> str:
         if not user_input.strip():
             return "Digite um comando válido."
 
         self.short_memory.add("Usuário", user_input)
 
-        prompt = self.build_prompt(user_input)
-        decision = self.planner.decide(user_input)
+        cmd = user_input.lower()
 
-        if "vigiar" in user_input.lower():
+        # COMANDOS DIRETOS
+        if "vigiar" in cmd:
             return self.surveillance.start()
 
-        if "parar vigilância" in user_input.lower():
+        if "parar vigilância" in cmd:
             return self.surveillance.stop()
 
-        if decision["type"] == "respond":
-            response = self.llm.generate(prompt)
+        if "mostrar câmera" in cmd:
+            return self.surveillance.enable_preview()
 
-        elif decision["type"] == "tool":
-            response = self.tools.execute(
-                decision["name"],
-                **decision.get("args", {})
-            )
+        if "fechar câmera" in cmd:
+            return self.surveillance.disable_preview()
 
-        else:
-            response = "Decisão desconhecida"
+        # LLM
+        prompt = self.build_prompt(user_input)
+        response = self.llm.generate(prompt)
 
-        if response and str(response).strip():
-            self.short_memory.add("IA", response)
-            self.long_memory.add(f"Usuário: {user_input} | IA: {response}")
+        self.short_memory.add("IA", response)
+        self.long_memory.add(f"Usuário: {user_input} | IA: {response}")
 
         return response
