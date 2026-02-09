@@ -1,48 +1,27 @@
-import os
 import cv2
-import time
+import os
 from datetime import datetime
-from tools.base import Tool
 
-
-class RecorderTool(Tool):
+class RecorderTool:
     name = "start_recording"
-    description = "Inicia gravação real de vídeo usando webcam"
 
-    def run(self, duration: int = 10, camera_index: int = 0):
-        cap = cv2.VideoCapture(camera_index)
+    def run(self, duration=20):
+        os.makedirs("recordings", exist_ok=True)
 
-        if not cap.isOpened():
-            return "Erro: não foi possível acessar a câmera."
-
-        # configurações do vídeo
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = 20.0
-
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        recordings_dir = os.path.join(base_dir, "recordings")
-
-        os.makedirs(recordings_dir, exist_ok=True)
-
-        filename = os.path.join(
-            recordings_dir,
-            datetime.now().strftime("%Y%m%d_%H%M%S.mp4")
-        )
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
+        filename = datetime.now().strftime("%Y%m%d_%H%M%S") + ".mp4"
+        path = os.path.join("recordings", filename)
 
-        start_time = time.time()
+        out = cv2.VideoWriter(path, fourcc, 20.0, (640, 480))
 
-        while time.time() - start_time < duration:
+        for _ in range(int(20 * duration)):
             ret, frame = cap.read()
             if not ret:
                 break
-
             out.write(frame)
 
         cap.release()
         out.release()
-        cv2.destroyAllWindows()
 
-        return f"🎥 Gravação concluída: {filename}"
+        return f"🎥 Gravação concluída: {path}"

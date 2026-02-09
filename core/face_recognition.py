@@ -1,84 +1,85 @@
-import os
 import cv2
-import numpy as np
+import os
+import time
+import shutil
+from datetime import datetime
+from ultralytics import YOLO
 
 
 class FaceRecognizer:
-    def __init__(self, known_faces_dir="faces/known", threshold=70):
-        self.known_faces_dir = known_faces_dir
-        self.threshold = threshold
+    def __init__(self):
+        self.model = YOLO("yolov8n.pt")
+        self.model.fuse()
 
-        # Detector de rosto
-        self.face_cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        self.base_dir = "faces"
+        self.unknown_dir = os.path.join(self.base_dir, "unknown")
+        self.known_dir = os.path.join(self.base_dir, "known")
+
+        os.makedirs(self.unknown_dir, exist_ok=True)
+        os.makedirs(self.known_dir, exist_ok=True)
+
+        self.last_saved = 0
+        self.save_interval = 10
+        self.last_unknown_face = None
+
+    def detect_faces(self, frame):
+        results = self.model(
+            frame,
+            conf=0.6,
+            verbose=False
         )
 
-        # Reconhecedor LBPH
-        self.recognizer = cv2.face.LBPHFaceRecognizer_create()
-
-        self.labels = {}
-        self._train()
-
-    # =============================
-    # TREINAMENTO
-    # =============================
-    def _train(self):
         faces = []
-        labels = []
-        label_id = 0
 
-        if not os.path.exists(self.known_faces_dir):
-            print("⚠️ Pasta faces/known não encontrada.")
+        if results and results[0].boxes is not None:
+            for box in results[0].boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                conf = float(box.conf[0])
+
+                faces.append({
+                    "bbox": (x1, y1, x2, y2),
+                    "confidence": conf,
+                    "name": "unknown"
+                })
+
+        return faces
+
+    def save_unknown(self, frame, face):
+        now = time.time()
+        if now - self.last_saved < self.save_interval:
             return
 
-        for person in os.listdir(self.known_faces_dir):
-            person_dir = os.path.join(self.known_faces_dir, person)
-            if not os.path.isdir(person_dir):
-                continue
+        x1, y1, x2, y2 = face["bbox"]
+        face_img = frame[y1:y2, x1:x2]
 
-            self.labels[label_id] = person
+        if face_img.size == 0:
+            return
 
-            for img_name in os.listdir(person_dir):
-                img_path = os.path.join(person_dir, img_name)
-                img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-                if img is None:
-                    continue
+        date_dir = datetime.now().strftime("%Y-%m-%d")
+        path_dir = os.path.join(self.unknown_dir, date_dir)
+        os.makedirs(path_dir, exist_ok=True)
 
-                faces.append(img)
-                labels.append(label_id)
+        filename = datetime.now().strftime("%H-%M-%S") + ".jpg"
+        path = os.path.join(path_dir, filename)
 
-            label_id += 1
+        cv2.imwrite(path, face_img)
 
-        if faces:
-            self.recognizer.train(faces, np.array(labels))
-            print(f"✅ Rostos treinados: {len(self.labels)}")
-        else:
-            print("⚠️ Nenhum rosto encontrado para treinamento.")
+        self.last_saved = now
+        self.last_unknown_face = path
 
-    # =============================
-    # RECONHECIMENTO
-    # =============================
-    def recognize(self, frame):
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        detected_faces = self.face_cascade.detectMultiScale(
-            gray, scaleFactor=1.3, minNeighbors=5
-        )
+        print(f"📸 Rosto desconhecido salvo: {path}")
 
-        results = []
+    def label_last_face(self, name: str):
+        if not self.last_unknown_face or not os.path.exists(self.last_unknown_face):
+            return "❌ Nenhum rosto recente para nomear."
 
-        for (x, y, w, h) in detected_faces:
-            roi = gray[y:y+h, x:x+w]
-            label, confidence = self.recognizer.predict(roi)
+        person_dir = os.path.join(self.known_dir, name.lower())
+        os.makedirs(person_dir, exist_ok=True)
 
-            if confidence < self.threshold:
-                name = self.labels.get(label, "unknown")
-            else:
-                name = "unknown"
+        count = len(os.listdir(person_dir)) + 1
+        new_path = os.path.join(person_dir, f"{count:03}.jpg")
 
-            results.append({
-                "name": name,
-                "confidence": confidence,
-                "bbox": (x, y, x+w, y+h)
-            })
+        shutil.move(self.last_unknown_face, new_path)
+        self.last_unknown_face = None
 
-        return results
+        return f"✅ Rosto salvo como {name}."
