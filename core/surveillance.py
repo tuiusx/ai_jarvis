@@ -6,6 +6,7 @@ import time
 import threading
 import torch
 from ultralytics import YOLO
+from core.face_recognition import FaceRecognizer
 
 
 class SurveillanceService:
@@ -16,7 +17,7 @@ class SurveillanceService:
         self.running = False
         self.thread = None
 
-        # Preview (janela)
+        # Preview
         self.show_window = False
 
         # Controle de inferência
@@ -30,8 +31,9 @@ class SurveillanceService:
         # GPU
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # YOLO rápido e leve
-        self.model = YOLO("yolov8n.pt").to(self.device)
+        # Modelos
+        self.person_detector = YOLO("yolov8n.pt").to(self.device)
+        self.face_recognizer = FaceRecognizer()
 
     # =============================
     # CONTROLES EXTERNOS
@@ -88,37 +90,50 @@ class SurveillanceService:
 
             self.last_inference = now
 
-            results = self.model(
+            # =============================
+            # DETECÇÃO DE PESSOAS (YOLO)
+            # =============================
+            results = self.person_detector(
                 frame,
                 conf=0.5,
-                classes=[0],  # pessoas
+                classes=[0],  # pessoa
                 device=0 if self.device == "cuda" else "cpu",
                 verbose=False
             )
 
-            detected = False
-            confidence = 0.0
+            person_detected = results and len(results[0].boxes) > 0
 
-            if results and len(results[0].boxes) > 0:
-                detected = True
-                confidence = float(results[0].boxes.conf[0])
+            # =============================
+            # RECONHECIMENTO FACIAL
+            # =============================
+            if person_detected:
+                faces = self.face_recognizer.recognize(frame)
 
-            # EVENTO
-            if detected and confidence > 0.6:
-                if now - self.last_event_time > self.event_cooldown:
+                for face in faces:
+                    if now - self.last_event_time < self.event_cooldown:
+                        continue
+
                     self.last_event_time = now
+
+                    if face["name"] == "unknown":
+                        event_type = "unknown_person_detected"
+                    else:
+                        event_type = "known_person_detected"
 
                     if self.callback:
                         self.callback({
-                            "event": "person_detected",
-                            "confidence": confidence
+                            "event": event_type,
+                            "name": face["name"],
+                            "confidence": face["confidence"]
                         })
 
+            # =============================
             # PREVIEW OPCIONAL
+            # =============================
             if self.show_window:
                 frame_show = frame.copy()
 
-                if detected:
+                if person_detected:
                     for box in results[0].boxes.xyxy:
                         x1, y1, x2, y2 = map(int, box)
                         cv2.rectangle(
