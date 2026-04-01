@@ -3,11 +3,12 @@ import os
 import time
 import shutil
 from datetime import datetime
+import numpy as np
+import face_recognition
 from ultralytics import YOLO
-from core.face_gallery import FaceRecognizer
 
 
-class LegacyFaceRecognizer:
+class FaceRecognizer:
     def __init__(self):
         self.model = YOLO("yolov8n.pt")
         self.model.fuse()
@@ -23,27 +24,74 @@ class LegacyFaceRecognizer:
         self.save_interval = 10
         self.last_unknown_face = None
 
+        # Carregar rostos conhecidos
+        self.known_face_encodings = []
+        self.known_face_names = []
+        self._load_known_faces()
+
     def detect_faces(self, frame):
-        results = self.model(
-            frame,
-            conf=0.6,
-            verbose=False
-        )
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Busca rostos no frame com face_recognition
+        face_locations = face_recognition.face_locations(rgb_frame, model="hog")
+        face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
         faces = []
+        for location, encoding in zip(face_locations, face_encodings):
+            top, right, bottom, left = location
+            name = "unknown"
+            confidence = 1.0
 
-        if results and results[0].boxes is not None:
-            for box in results[0].boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                conf = float(box.conf[0])
+            if self.known_face_encodings:
+                distances = face_recognition.face_distance(self.known_face_encodings, encoding)
+                best_index = int(np.argmin(distances))
+                if distances[best_index] < 0.5:
+                    name = self.known_face_names[best_index]
+                    confidence = 1.0 - distances[best_index]
 
-                faces.append({
-                    "bbox": (x1, y1, x2, y2),
-                    "confidence": conf,
-                    "name": "unknown"
-                })
+            faces.append({
+                "bbox": (left, top, right, bottom),
+                "confidence": confidence,
+                "name": name
+            })
+
+        # Se não forem detectados rostos pela face_recognition, tenta YOLO como fallback
+        if not faces:
+            results = self.model(frame, conf=0.6, verbose=False)
+            if results and results[0].boxes is not None:
+                for box in results[0].boxes:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    faces.append({
+                        "bbox": (x1, y1, x2, y2),
+                        "confidence": float(box.conf[0]),
+                        "name": "unknown"
+                    })
 
         return faces
+
+    def _load_known_faces(self):
+        self.known_face_encodings = []
+        self.known_face_names = []
+
+        if not os.path.isdir(self.known_dir):
+            return
+
+        for person_name in os.listdir(self.known_dir):
+            person_path = os.path.join(self.known_dir, person_name)
+            if not os.path.isdir(person_path):
+                continue
+
+            for filename in os.listdir(person_path):
+                if filename.lower().endswith((".jpg", ".jpeg", ".png")):
+                    image_path = os.path.join(person_path, filename)
+                    try:
+                        image = face_recognition.load_image_file(image_path)
+                        encodings = face_recognition.face_encodings(image)
+                        if encodings:
+                            self.known_face_encodings.append(encodings[0])
+                            self.known_face_names.append(person_name)
+                    except Exception as e:
+                        print(f"⚠️ Erro carregando rosto conhecido '{image_path}': {e}")
 
     def save_unknown(self, frame, face):
         now = time.time()

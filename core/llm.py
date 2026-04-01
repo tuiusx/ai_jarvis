@@ -1,64 +1,196 @@
+import json
+import os
+import unicodedata
+
+import yaml
+from openai import OpenAI
+
+
 class LocalLLM:
-    def generate(
-        self,
-        prompt: str,
-        context: str = "",
-        memories=None,
-    ) -> str:
+    def __init__(self):
+        config_path = "config/settings.yaml"
+        self.config = {}
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as file:
+                self.config = yaml.safe_load(file) or {}
+
+        api_key = os.getenv("OPENAI_API_KEY") or self.config.get("openai", {}).get("api_key", "")
+        self.model = self.config.get("openai", {}).get("model", "gpt-3.5-turbo")
+        self.client = OpenAI(api_key=api_key) if api_key else None
+
+    def generate(self, prompt: str, context: str = "", memories=None) -> str:
         normalized = self._normalize(prompt)
         memories = memories or []
 
-        if any(
-            greeting in normalized
-            for greeting in ("oi", "ola", "bom dia", "boa tarde", "boa noite")
-        ):
-            return (
-                "Oi. Posso iniciar a vigilancia, cadastrar rostos "
-                "e guardar memorias simples."
-            )
+        if any(greeting in normalized for greeting in ("oi", "ola", "bom dia", "boa tarde", "boa noite")):
+            return "Oi. Posso iniciar a vigilancia, cadastrar rostos, guardar memorias simples e controlar dispositivos da casa."
 
         if "quem voce e" in normalized or "quem e voce" in normalized:
-            return (
-                "Sou o assistente local deste projeto. Hoje opero com "
-                "comandos, memoria simples e vigilancia."
-            )
+            return "Sou o assistente local deste projeto. Hoje opero com comandos, memoria simples, vigilancia e automacao residencial."
 
-        if (
-            "o que voce faz" in normalized
-            or "como voce funciona" in normalized
-            or "ajuda" in normalized
-        ):
-            return (
-                "Consigo vigiar o ambiente, gravar o stream atual sem "
-                "reabrir a camera, cadastrar rostos e consultar memorias simples."
-            )
+        if "o que voce faz" in normalized or "como voce funciona" in normalized or "ajuda" in normalized:
+            return "Consigo vigiar o ambiente, gravar o stream atual, cadastrar rostos, consultar memorias simples e controlar luz, tomada e fechadura."
 
         if memories:
-            return (
-                "Encontrei isto na memoria relacionado ao que voce disse: "
-                + "; ".join(memories[:3])
-            )
+            return "Encontrei isto na memoria relacionado ao que voce disse: " + "; ".join(memories[:3])
 
         recent_lines = [line for line in context.splitlines() if line.strip()]
         if recent_lines:
             recent_context = " | ".join(recent_lines[-2:])
-            return (
-                "Ainda estou em modo local sem um modelo generativo conectado. "
-                "Posso agir sobre vigilancia, rostos e memoria simples. "
-                f"Contexto recente: {recent_context}"
-            )
+            return "Ainda estou em modo local. Posso agir sobre vigilancia, rostos, memoria e automacao da casa. Contexto recente: " + recent_context
 
-        return (
-            "Ainda estou em modo local sem um modelo generativo conectado. "
-            "Posso ajudar com vigilancia, cadastro de rostos e memoria simples."
-        )
+        if self.client is not None:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=150,
+                    temperature=0.7,
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as exc:
+                return f"Erro no LLM: {str(exc)}"
+
+        return "Ainda estou em modo local. Posso ajudar com vigilancia, cadastro de rostos, memoria simples e automacao residencial."
+
+    def think(self, perception, context):
+        content = perception.get("content", "").lower().strip()
+
+        if any(k in content for k in ["invas", "intrus", "estranh", "desconhec", "parede", "escura"]):
+            return {
+                "intent": "intrusion_check",
+                "response": "Detectei um possivel risco. Vou ligar a vigilancia e monitorar rostos desconhecidos.",
+                "needs_action": True,
+                "action": "surveillance_start",
+            }
+
+        if any(
+            k in content
+            for k in [
+                "iniciar vigilancia",
+                "ligar vigilancia",
+                "comecar vigilancia",
+                "iniciar vigilância",
+                "ligar vigilância",
+                "começar vigilância",
+                "vigiar ambiente",
+            ]
+        ):
+            return {
+                "intent": "surveillance_start",
+                "response": "Vigilancia ativada. Monitorando ambiente.",
+                "needs_action": True,
+                "action": "surveillance_start",
+            }
+
+        if any(
+            k in content
+            for k in [
+                "parar vigilancia",
+                "desligar vigilancia",
+                "pausar vigilancia",
+                "parar vigilância",
+                "desligar vigilância",
+                "pausar vigilância",
+            ]
+        ):
+            return {
+                "intent": "surveillance_stop",
+                "response": "Vigilancia pausada.",
+                "needs_action": True,
+                "action": "surveillance_stop",
+            }
+
+        home_command = self._match_home_command(content)
+        if home_command:
+            return home_command
+
+        if any(k in content for k in ["olá", "ola", "oi", "bom dia", "boa tarde", "boa noite"]):
+            return {
+                "intent": "greeting",
+                "response": "Ola! Estou pronto para proteger sua casa e controlar seus dispositivos.",
+                "needs_action": False,
+            }
+
+        if any(k in content for k in ["status", "como esta", "como está", "tudo bem"]):
+            return {
+                "intent": "status",
+                "response": "Estou online. Voce pode pedir para ligar a luz, controlar a tomada, trancar a fechadura ou iniciar vigilancia.",
+                "needs_action": False,
+            }
+
+        if self.client is not None:
+            try:
+                prompt = f"""
+                Voce e JARVIS, um assistente de IA inteligente e seguro. Responda em portugues.
+
+                Contexto: {context}
+                Comando: {content}
+
+                Gere um JSON com intent, response, needs_action e action (opcional).
+                """
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": "Voce e um assistente que responde apenas com JSON valido."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=200,
+                    temperature=0.3,
+                )
+                result = json.loads(response.choices[0].message.content.strip())
+                result.setdefault("intent", "unknown")
+                result.setdefault("response", "Desculpe, nao entendi.")
+                result.setdefault("needs_action", False)
+                return result
+            except Exception:
+                pass
+
+        return {
+            "intent": "unknown",
+            "response": "Desculpe, nao entendi. Tente algo como 'ligar a luz da casa', 'desligar a tomada' ou 'trancar a fechadura'.",
+            "needs_action": False,
+        }
+
+    def _match_home_command(self, content):
+        device_aliases = {
+            "luz": ["luz", "lampada", "lâmpada", "iluminacao", "iluminação"],
+            "tomada": ["tomada", "plug", "energia da tomada"],
+            "fechadura": ["fechadura", "porta", "porta da casa", "tranca"],
+        }
+        action_aliases = {
+            "on": ["ligar", "acender", "ativar"],
+            "off": ["desligar", "apagar", "desativar"],
+            "lock": ["trancar", "fechar", "bloquear"],
+            "unlock": ["destrancar", "abrir", "liberar"],
+        }
+        responses = {
+            ("luz", "on"): "Ligando a luz da casa.",
+            ("luz", "off"): "Desligando a luz da casa.",
+            ("tomada", "on"): "Ligando a tomada da casa.",
+            ("tomada", "off"): "Desligando a tomada da casa.",
+            ("fechadura", "lock"): "Trancando a fechadura da casa.",
+            ("fechadura", "unlock"): "Destrancando a fechadura da casa.",
+        }
+
+        for device, aliases in device_aliases.items():
+            if not any(alias in content for alias in aliases):
+                continue
+
+            candidate_actions = ("unlock", "lock") if device == "fechadura" else ("off", "on")
+            for action in candidate_actions:
+                if any(alias in content for alias in action_aliases[action]):
+                    return {
+                        "intent": "home_control",
+                        "device": device,
+                        "action": action,
+                        "response": responses[(device, action)],
+                        "needs_action": True,
+                    }
+
+        return None
 
     @staticmethod
     def _normalize(text: str):
-        import unicodedata
-
         normalized = unicodedata.normalize("NFD", text.lower())
-        return "".join(
-            char for char in normalized
-            if unicodedata.category(char) != "Mn"
-        )
+        return "".join(char for char in normalized if unicodedata.category(char) != "Mn")

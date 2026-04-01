@@ -5,13 +5,12 @@ import threading
 import torch
 from ultralytics import YOLO
 from core.face_recognition import FaceRecognizer
-from core.surveillance_runtime import SurveillanceService
 
 # força OpenCV a NÃO usar MSMF (evita bugs no Windows)
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 
 
-class LegacySurveillanceService:
+class SurveillanceService:
     def __init__(
         self,
         camera_index: int = 0,
@@ -113,7 +112,23 @@ class LegacySurveillanceService:
                 # ==========================
                 faces = self.face_recognizer.detect_faces(frame)
                 for face in faces:
-                    self.face_recognizer.save_unknown(frame, face)
+                    if face.get("name") == "unknown":
+                        self.face_recognizer.save_unknown(frame, face)
+                        if self.callback:
+                            self.callback({
+                                "event": "intrusion_unknown_face",
+                                "timestamp": now,
+                                "bbox": face.get("bbox"),
+                                "message": "Rosto desconhecido detectado!"
+                            })
+                    else:
+                        if self.callback:
+                            self.callback({
+                                "event": "known_person",
+                                "timestamp": now,
+                                "name": face.get("name"),
+                                "message": f"Pessoa conhecida detectada: {face.get('name')}"
+                            })
 
             time.sleep(self.detect_interval)
 

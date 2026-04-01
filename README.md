@@ -1,52 +1,52 @@
-﻿# AI Jarvis - Assistente Local
+# AI Jarvis - Assistente Local
 
-AI Jarvis e um projeto de assistente local, offline-first, com foco em vigilancia, memoria simples e automacoes de camera.
+AI Jarvis e um assistente local com foco em vigilancia, memoria simples e automacao residencial.
 
 ## Estado atual
 
 - Interface de texto local
-- Vigilancia em background com deteccao de pessoas via YOLO
-- Gravacao automatica usando o mesmo stream da camera
+- Interface multimodal em desenvolvimento
+- Vigilancia em background com deteccao de pessoas
+- Gravacao automatica do stream atual
 - Deteccao e cadastro de rostos com OpenCV
 - Memoria curta em conversa e memoria longa persistida em `state/long_term_memory.json`
-- Arquitetura modular pronta para receber um LLM local real no futuro
-
-## O que ainda nao existe
-
-- Um LLM generativo integrado por padrao
-- Interface de voz ou web
-- Suite de testes ampla para camera e visao computacional
-
-## Estrutura
-
-```text
-ai_jarvis/
-|-- core/        # agente, memoria, planner, vigilancia
-|-- tools/       # ferramentas como gravacao
-|-- interfaces/  # interface de texto
-|-- config/      # configuracoes estaticas
-|-- tests/       # testes unitarios leves
-|-- main.py
-```
+- Controle de `luz`, `tomada` e `fechadura` em modo simulado
+- Suite de testes automatizados para os modulos centrais
 
 ## Como executar
 
 1. Instale as dependencias com `pip install -r requirements.txt`.
-2. Garanta acesso a um peso YOLO compativel com `yolov8n.pt`, seja localmente ou pela resolucao automatica do Ultralytics.
-3. Rode `python main.py`.
+2. Configure `OPENAI_API_KEY` ou edite `config/settings.yaml` se quiser fallback via OpenAI.
+3. Rode `python main.py` para a interface principal.
+4. Rode `python -m unittest discover -s tests -v` para executar os testes.
 
 ## Comandos de exemplo
 
 - `vigiar ambiente`
 - `parar vigilancia`
-- `esse rosto e ricardo`
+- `ligar a luz da casa`
+- `desligar a tomada`
+- `trancar a fechadura da casa`
 - `lembre que a chave reserva esta na gaveta`
 - `o que voce sabe sobre chave reserva`
-- `quais rostos conhecidos voce tem`
 
-## Dados locais
+## Estrutura
 
-Arquivos gerados em runtime ficam em `faces/`, `recordings/`, `runs/` e `state/` e nao devem ser versionados.
+```text
+ai_jarvis/
+|-- config/
+|-- core/
+|-- interfaces/
+|-- tests/
+|-- tools/
+`-- main.py
+```
+
+## Observacoes
+
+- Arquivos gerados em runtime ficam em `faces/`, `recordings/`, `runs/` e `state/`.
+- Esses artefatos nao devem ser versionados.
+- A interface multimodal ainda precisa de ajuste de sintaxe antes de ficar estavel.
 
 ## Licenca
 

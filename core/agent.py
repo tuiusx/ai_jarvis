@@ -1,139 +1,126 @@
-from core.memory import ShortTermMemory, LongTermMemory
-from core.planner import Planner
-from core.llm import LocalLLM
-from core.surveillance_runtime import SurveillanceService
-from tools.manager import ToolManager
-from tools.stream_recorder import RecorderTool
+import logging
+import time
 
-
-class LegacyAgent:
-    def __init__(self):
-        self.short_memory = ShortTermMemory()
-        self.long_memory = LongTermMemory()
-        self.planner = Planner()
-        self.llm = LocalLLM()
-
-        self.tools = ToolManager()
-        self.tools.register(RecorderTool())
-
-        self.surveillance = SurveillanceService(
-            callback=self.handle_surveillance_event
-        )
-
-    def handle_surveillance_event(self, event: dict):
-        if event.get("event") == "person_detected":
-            self.tools.execute("start_recording", duration=20)
-
-    def run(self, user_input: str):
-        text = user_input.lower().strip()
-        if not text:
-            return None
-
-        # comandos diretos
-        if "vigiar ambiente" in text:
-            return self.surveillance.start()
-
-        if "parar vigilância" in text:
-            return self.surveillance.stop()
-
-        if "esse rosto é" in text:
-            name = text.replace("esse rosto é", "").strip()
-            if not name:
-                return "Diga o nome depois de 'esse rosto é'."
-            return self.surveillance.face_recognizer.label_last_face(name)
-
-        # fluxo normal (LLM mock)
-        self.short_memory.add("Usuário", user_input)
-        response = self.llm.generate(user_input)
-        self.short_memory.add("IA", response)
-        return response
+logging.basicConfig(level=logging.INFO)
 
 
 class Agent:
-    def __init__(self):
-        self.short_memory = ShortTermMemory()
-        self.long_memory = LongTermMemory()
-        self.planner = Planner()
-        self.llm = LocalLLM()
+    def __init__(self, llm, memory, planner, tools, interface):
+        self.llm = llm
+        self.memory = memory
+        self.planner = planner
+        self.tools = tools
+        self.interface = interface
+        self.running = True
 
-        self.tools = ToolManager()
-        recorder = RecorderTool()
-        self.tools.register(recorder)
-
-        self.surveillance = SurveillanceService(
-            callback=self.handle_surveillance_event,
-            recorder=recorder,
-        )
-
-    def handle_surveillance_event(self, event: dict):
-        if event.get("event") == "person_detected":
-            self.tools.execute(
-                "start_recording",
-                duration=20,
-                frame_size=event.get("frame_size"),
-                fps=event.get("fps", 20.0),
-            )
-
-    def run(self, user_input: str):
-        if not user_input or not user_input.strip():
+    def perceive(self):
+        if self.interface is None:
             return None
 
-        decision = self.planner.decide(user_input)
-        action = decision.get("type")
-
-        if action == "ignore":
+        data = self.interface.get_input()
+        if not data:
             return None
 
-        if action == "start_surveillance":
-            return self.surveillance.start()
+        if not isinstance(data, dict):
+            data = {
+                "mode": "text",
+                "content": str(data),
+                "confidence": 1.0,
+            }
 
-        if action == "stop_surveillance":
-            return self.surveillance.stop()
+        content = data.get("content", "").strip()
+        mode = data.get("mode", "unknown")
+        confidence = data.get("confidence", 1.0)
 
-        if action == "label_face":
+        if not content:
+            return None
+
+        if content.lower() in ["sair", "exit", "quit"]:
+            self.stop()
+            self.interface.output("Encerrando JARVIS...")
+            return None
+
+        perception = {
+            "type": mode,
+            "content": content,
+            "confidence": confidence,
+            "timestamp": time.time(),
+        }
+
+        logging.info("Percepcao [%s]: %s", mode, content)
+        return perception
+
+    def analyze(self, perception):
+        context = self.memory.recall(perception)
+        analysis = self.llm.think(perception=perception, context=context)
+        logging.info("Analise concluida")
+        return analysis
+
+    def plan(self, analysis):
+        if not analysis:
+            return None
+
+        plan = self.planner.create_plan(analysis)
+        if not isinstance(plan, dict) or "steps" not in plan:
+            logging.warning("Plano invalido")
+            return None
+
+        logging.info("Plano criado (%s passos)", len(plan["steps"]))
+        return plan
+
+    def act(self, plan):
+        results = []
+        if not plan:
+            return results
+
+        for step in plan["steps"]:
             try:
-                recognizer = self.surveillance.get_face_recognizer()
+                results.append(self.tools.execute(step))
             except Exception as exc:
-                return f"Reconhecimento facial indisponivel: {exc}"
-            name = decision.get("name", "").strip()
-            if not name:
-                return "Diga o nome depois de 'esse rosto e'."
-            return recognizer.label_last_face(name)
+                logging.error("Erro no passo %s", step)
+                results.append({"error": str(exc), "step": step})
 
-        if action == "list_known_faces":
+        return results
+
+    def remember(self, perception, analysis, plan, results):
+        experience = {
+            "perception": perception,
+            "analysis": analysis,
+            "plan": plan,
+            "results": results,
+            "timestamp": time.time(),
+        }
+        self.memory.store(experience)
+        logging.info("Experiencia salva")
+
+    def run(self):
+        if self.interface is None:
+            raise RuntimeError("Agent.run() requer uma interface configurada.")
+
+        self.interface.output("JARVIS online. Sempre escutando...")
+
+        while self.running:
+            perception = self.perceive()
+            if not perception:
+                time.sleep(0.05)
+                continue
+
+            analysis = self.analyze(perception)
+            plan = self.plan(analysis)
+            results = self.act(plan)
+
+            for result in results:
+                if isinstance(result, dict):
+                    if "message" in result:
+                        self.interface.output(result["message"])
+                    elif "error" in result:
+                        self.interface.output(f"Erro: {result['error']}")
+
             try:
-                recognizer = self.surveillance.get_face_recognizer()
+                self.remember(perception, analysis, plan, results)
             except Exception as exc:
-                return f"Reconhecimento facial indisponivel: {exc}"
-            known_people = recognizer.list_known_people()
-            if not known_people:
-                return "Ainda nao ha rostos conhecidos cadastrados."
-            return "Rostos conhecidos: " + ", ".join(known_people)
+                logging.error("Falha ao gravar memoria: %s", exc)
 
-        if action == "remember":
-            memory_text = decision.get("memory", "").strip()
-            if not memory_text:
-                return "Diga o que devo guardar."
-            self.long_memory.add(memory_text)
-            return f"Memoria registrada: {memory_text}"
-
-        if action == "recall":
-            query = decision.get("query", "").strip()
-            matches = self.long_memory.search(query)
-            if not matches:
-                return f"Nao encontrei nada salvo sobre '{query}'."
-            summary = "; ".join(item["text"] for item in matches)
-            return f"Encontrei na memoria: {summary}"
-
-        self.short_memory.add("Usuario", user_input)
-        related_memories = [
-            item["text"]
-            for item in self.long_memory.search(user_input)
-        ]
-        response = self.llm.generate(
-            user_input,
-            context=self.short_memory.get_context(),
-            memories=related_memories,
-        )
-        self.short_memory.add("IA", response)
-        return response
+    def stop(self):
+        self.running = False
+        logging.info("Agente desligado")

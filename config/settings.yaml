@@ -1,0 +1,22 @@
+# Configurações do JARVIS
+openai:
+  api_key: "sk-your-openai-api-key-here"  # Substitua pela sua chave da OpenAI
+  model: "gpt-3.5-turbo"
+
+voice:
+  wake_word: "jarvis"
+  language: "pt-BR"
+  timeout: 8
+
+memory:
+  short_term_limit: 10
+  long_term_file: "memory.json"
+  long_term_limit: 100
+
+camera:
+  default_index: 0
+  detection_duration: 5
+
+recording:
+  default_duration: 10
+  output_dir: "recordings"
