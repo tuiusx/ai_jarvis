@@ -164,7 +164,7 @@ class SurveillanceToolTests(unittest.TestCase):
 
         result = tool.run(action="pause")
 
-        self.assertIn("não reconhecida", result["error"])
+        self.assertIn("nao reconhecida", result["error"])
 
 
 if __name__ == "__main__":

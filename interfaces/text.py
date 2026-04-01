@@ -1,7 +1,9 @@
 import os
 import time
+from pathlib import Path
 
 from colorama import Back, Fore, Style, init
+import yaml
 
 from core.agent import Agent
 
@@ -42,6 +44,14 @@ def chat():
     from tools.recorder import RecorderTool
     from tools.surveillance_tool import SurveillanceTool
 
+    settings = {}
+    config_path = Path("config/settings.yaml")
+    if config_path.exists():
+        with config_path.open("r", encoding="utf-8") as file:
+            settings = yaml.safe_load(file) or {}
+    surveillance_cfg = settings.get("surveillance", {})
+    home_assistant_cfg = settings.get("home_assistant", {})
+
     llm = LocalLLM()
     memory = ShortTermMemory()
     long_memory = LongTermMemory()
@@ -49,8 +59,15 @@ def chat():
     tools = ToolManager()
     tools.register(CameraTool())
     tools.register(RecorderTool())
-    tools.register(HomeAutomationTool())
-    tools.register(SurveillanceTool(callback=lambda evt: print(f"{Fore.MAGENTA}Evento de vigilancia: {evt}{Style.RESET_ALL}")))
+    tools.register(HomeAutomationTool(home_assistant=home_assistant_cfg))
+    tools.register(
+        SurveillanceTool(
+            callback=lambda evt: print(f"{Fore.MAGENTA}Evento de vigilancia: {evt}{Style.RESET_ALL}"),
+            model_path=surveillance_cfg.get("model_path", "yolov8n.pt"),
+            detect_interval=float(surveillance_cfg.get("detect_interval", 0.4)),
+            record_cooldown=int(surveillance_cfg.get("record_cooldown", 30)),
+        )
+    )
 
     agent = Agent(llm=llm, memory=memory, planner=planner, tools=tools, interface=None)
 

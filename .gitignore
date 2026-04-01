@@ -214,3 +214,6 @@ state/
 runs.zip
 yolov8*.pt
 face_recognizer.task
+.ultralytics/
+Ultralytics/
+PyAudio-*.whl
