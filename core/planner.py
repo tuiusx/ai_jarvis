@@ -63,6 +63,20 @@ class Planner:
                 ]
             }
 
+        if intent == "network_scan":
+            return {
+                "steps": [
+                    {
+                        "tool": "network_scan",
+                        "limit": analysis.get("limit", 50),
+                    },
+                    {
+                        "action": "respond",
+                        "message": analysis.get("response", "Escaneamento de rede concluido."),
+                    },
+                ]
+            }
+
         return {
             "steps": [
                 {

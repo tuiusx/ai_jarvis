@@ -43,6 +43,12 @@ class PlannerTests(unittest.TestCase):
         plan = self.planner.create_plan({"intent": "unknown", "response": "Entendi."})
         self.assertEqual(plan["steps"], [{"action": "respond", "message": "Entendi."}])
 
+    def test_creates_network_scan_plan(self):
+        plan = self.planner.create_plan({"intent": "network_scan", "response": "Escaneando."})
+        self.assertEqual(plan["steps"][0]["tool"], "network_scan")
+        self.assertEqual(plan["steps"][0]["limit"], 50)
+        self.assertEqual(plan["steps"][1]["message"], "Escaneando.")
+
 
 class ToolManagerTests(unittest.TestCase):
     def setUp(self):

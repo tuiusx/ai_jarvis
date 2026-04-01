@@ -41,6 +41,7 @@ def chat():
     from tools.camera import CameraTool
     from tools.home_automation import HomeAutomationTool
     from tools.manager import ToolManager
+    from tools.network_discovery import NetworkDiscoveryTool
     from tools.recorder import RecorderTool
     from tools.surveillance_tool import SurveillanceTool
 
@@ -59,6 +60,7 @@ def chat():
     tools = ToolManager()
     tools.register(CameraTool())
     tools.register(RecorderTool())
+    tools.register(NetworkDiscoveryTool())
     tools.register(HomeAutomationTool(home_assistant=home_assistant_cfg))
     tools.register(
         SurveillanceTool(

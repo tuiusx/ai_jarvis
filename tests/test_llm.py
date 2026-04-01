@@ -54,6 +54,11 @@ class LocalLLMTests(unittest.TestCase):
         self.assertEqual(lock_result["action"], "lock")
         self.assertEqual(unlock_result["action"], "unlock")
 
+    def test_matches_network_scan_command(self):
+        result = self.llm.think({"content": "quero escanear a rede da casa"}, "")
+        self.assertEqual(result["intent"], "network_scan")
+        self.assertEqual(result["action"], "network_scan")
+
     def test_returns_safe_unknown_response_when_not_understood(self):
         result = self.llm.think({"content": "comando aleatorio"}, "")
         self.assertEqual(result["intent"], "unknown")

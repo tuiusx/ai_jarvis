@@ -101,6 +101,26 @@ class LocalLLM:
                 "action": "surveillance_stop",
             }
 
+        if any(
+            k in content
+            for k in [
+                "escanear rede",
+                "scanear rede",
+                "varrer rede",
+                "dispositivos na rede",
+                "quem esta na rede",
+                "quem esta conectado",
+                "rede da casa",
+                "wifi da casa",
+            ]
+        ):
+            return {
+                "intent": "network_scan",
+                "response": "Vou identificar os dispositivos visiveis na rede da casa.",
+                "needs_action": True,
+                "action": "network_scan",
+            }
+
         home_command = self._match_home_command(content)
         if home_command:
             return home_command
@@ -115,7 +135,7 @@ class LocalLLM:
         if any(k in content for k in ["status", "como esta", "como está", "tudo bem"]):
             return {
                 "intent": "status",
-                "response": "Estou online. Voce pode pedir para ligar a luz, controlar a tomada, trancar a fechadura ou iniciar vigilancia.",
+                "response": "Estou online. Voce pode controlar luz, tomada, fechadura, iniciar vigilancia ou pedir um escaneamento da rede da casa.",
                 "needs_action": False,
             }
 
