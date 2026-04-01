@@ -135,7 +135,20 @@ class LocalLLM:
         if any(k in content for k in ["status", "como esta", "como está", "tudo bem"]):
             return {
                 "intent": "status",
-                "response": "Estou online. Voce pode controlar luz, tomada, fechadura, iniciar vigilancia ou pedir um escaneamento da rede da casa.",
+                "response": "Estou online. Voce pode controlar luz, tomada, fechadura, iniciar vigilancia, escanear a rede da casa ou fazer perguntas.",
+                "needs_action": False,
+            }
+
+        if self._looks_like_question(content):
+            answer = self.generate(content, context=context)
+            if answer.lower().startswith("erro no llm:"):
+                answer = (
+                    "Estou sem acesso ao provedor de respostas agora, "
+                    "mas sigo pronto para comandos da casa, vigilancia e rede local."
+                )
+            return {
+                "intent": "question_answer",
+                "response": answer,
                 "needs_action": False,
             }
 
@@ -209,6 +222,31 @@ class LocalLLM:
                     }
 
         return None
+
+    @staticmethod
+    def _looks_like_question(content: str):
+        if not content:
+            return False
+
+        if "?" in content:
+            return True
+
+        question_starters = (
+            "o que",
+            "qual",
+            "quais",
+            "como",
+            "quando",
+            "onde",
+            "por que",
+            "porque",
+            "quem",
+            "quanto",
+            "me explica",
+            "explique",
+        )
+        normalized = content.strip().lower()
+        return normalized.startswith(question_starters)
 
     @staticmethod
     def _normalize(text: str):

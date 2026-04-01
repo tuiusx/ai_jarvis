@@ -49,6 +49,10 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(plan["steps"][0]["limit"], 50)
         self.assertEqual(plan["steps"][1]["message"], "Escaneando.")
 
+    def test_creates_question_answer_plan(self):
+        plan = self.planner.create_plan({"intent": "question_answer", "response": "Resposta direta."})
+        self.assertEqual(plan["steps"], [{"action": "respond", "message": "Resposta direta."}])
+
 
 class ToolManagerTests(unittest.TestCase):
     def setUp(self):

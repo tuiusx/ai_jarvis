@@ -59,6 +59,11 @@ class LocalLLMTests(unittest.TestCase):
         self.assertEqual(result["intent"], "network_scan")
         self.assertEqual(result["action"], "network_scan")
 
+    def test_matches_question_answer_intent(self):
+        result = self.llm.think({"content": "qual a diferenca entre ram e rom?"}, "")
+        self.assertEqual(result["intent"], "question_answer")
+        self.assertTrue(result["response"])
+
     def test_returns_safe_unknown_response_when_not_understood(self):
         result = self.llm.think({"content": "comando aleatorio"}, "")
         self.assertEqual(result["intent"], "unknown")

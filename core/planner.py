@@ -77,6 +77,16 @@ class Planner:
                 ]
             }
 
+        if intent == "question_answer":
+            return {
+                "steps": [
+                    {
+                        "action": "respond",
+                        "message": analysis.get("response", "Posso tentar responder sua pergunta."),
+                    }
+                ]
+            }
+
         return {
             "steps": [
                 {
