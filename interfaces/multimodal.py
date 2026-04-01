@@ -18,14 +18,19 @@ class MultiModalInterface:
             print(f"Erro ao inicializar microfone: {exc}")
             self.microphone = None
 
-        self.tts = pyttsx3.init()
-        self.tts.setProperty("rate", 180)
-        self.tts.setProperty("volume", 0.9)
+        self.tts = None
+        try:
+            self.tts = pyttsx3.init()
+            self.tts.setProperty("rate", 180)
+            self.tts.setProperty("volume", 0.9)
 
-        for voice in self.tts.getProperty("voices"):
-            if "portuguese" in voice.name.lower() or "pt" in voice.name.lower():
-                self.tts.setProperty("voice", voice.id)
-                break
+            for voice in self.tts.getProperty("voices"):
+                if "portuguese" in voice.name.lower() or "pt" in voice.name.lower():
+                    self.tts.setProperty("voice", voice.id)
+                    break
+        except Exception as exc:
+            print(f"TTS indisponivel: {exc}")
+            self.tts = None
 
         self.last_wake_time = 0.0
         self.wake_timeout = 8
@@ -67,5 +72,11 @@ class MultiModalInterface:
 
     def output(self, message):
         print(f"JARVIS: {message}")
-        self.tts.say(message)
-        self.tts.runAndWait()
+        if self.tts is None:
+            return
+
+        try:
+            self.tts.say(message)
+            self.tts.runAndWait()
+        except Exception as exc:
+            print(f"Falha no TTS: {exc}")
