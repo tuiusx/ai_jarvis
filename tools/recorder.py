@@ -1,9 +1,16 @@
-import cv2
 import os
+import time
+import threading
 from datetime import datetime
 
-class RecorderTool:
+import cv2
+
+from tools.base import Tool
+from tools.stream_recorder import RecorderTool
+
+class LegacyRecorderTool(Tool):
     name = "start_recording"
+    description = "Grava o stream atual sem reabrir a camera"
 
     def run(self, duration=20):
         os.makedirs("recordings", exist_ok=True)

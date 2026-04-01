@@ -5,12 +5,13 @@ import threading
 import torch
 from ultralytics import YOLO
 from core.face_recognition import FaceRecognizer
+from core.surveillance_runtime import SurveillanceService
 
 # força OpenCV a NÃO usar MSMF (evita bugs no Windows)
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 
 
-class SurveillanceService:
+class LegacySurveillanceService:
     def __init__(
         self,
         camera_index: int = 0,
