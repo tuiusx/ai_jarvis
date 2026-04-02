@@ -71,7 +71,7 @@ def chat():
         )
     )
 
-    agent = Agent(llm=llm, memory=memory, planner=planner, tools=tools, interface=None)
+    agent = Agent(llm=llm, memory=memory, long_memory=long_memory, planner=planner, tools=tools, interface=None)
 
     print(f"{Fore.GREEN}JARVIS online! Digite sua mensagem ou comando.{Style.RESET_ALL}")
     print()
@@ -120,15 +120,7 @@ def chat():
             context = memory.get_context()
             analysis = llm.think(perception, context)
             plan = planner.create_plan(analysis)
-
-            results = []
-            if plan and "steps" in plan:
-                for step in plan["steps"]:
-                    if isinstance(step, dict):
-                        if "action" in step and step["action"] == "respond":
-                            results.append({"message": step.get("message", "Acao executada.")})
-                        elif "tool" in step:
-                            results.append(tools.execute(step))
+            results = agent.act(plan)
 
             experience = {
                 "perception": perception,

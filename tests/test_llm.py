@@ -64,6 +64,16 @@ class LocalLLMTests(unittest.TestCase):
         self.assertEqual(result["intent"], "question_answer")
         self.assertTrue(result["response"])
 
+    def test_matches_remember_intent(self):
+        result = self.llm.think({"content": "lembre que a senha do cofre e azul"}, "")
+        self.assertEqual(result["intent"], "remember")
+        self.assertEqual(result["memory"], "a senha do cofre e azul")
+
+    def test_matches_recall_intent(self):
+        result = self.llm.think({"content": "o que voce sabe sobre senha do cofre?"}, "")
+        self.assertEqual(result["intent"], "recall")
+        self.assertEqual(result["query"], "senha do cofre")
+
     def test_returns_safe_unknown_response_when_not_understood(self):
         result = self.llm.think({"content": "comando aleatorio"}, "")
         self.assertEqual(result["intent"], "unknown")

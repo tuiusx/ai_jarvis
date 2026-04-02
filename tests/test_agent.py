@@ -28,6 +28,19 @@ class FakeMemory:
         self.store_calls.append(experience)
 
 
+class FakeLongMemory:
+    def __init__(self):
+        self.items = []
+
+    def add(self, text):
+        self.items.append({"text": text})
+        return {"text": text}
+
+    def search(self, query, limit=3):
+        matches = [item for item in self.items if query in item["text"]]
+        return matches[:limit]
+
+
 class FakeLLM:
     def think(self, perception, context):
         return {"intent": "home_control", "response": "Ligando a luz."}
@@ -89,6 +102,17 @@ class AgentTests(unittest.TestCase):
         self.assertIn("JARVIS online. Sempre escutando...", interface.outputs)
         self.assertIn("A luz da casa esta ligada.", interface.outputs)
         self.assertIn("Ligando a luz.", interface.outputs)
+
+    def test_act_handles_remember_and_recall_actions(self):
+        memory = FakeMemory()
+        long_memory = FakeLongMemory()
+        agent = Agent(FakeLLM(), memory, FakePlanner(), FakeTools(), FakeInterface([]), long_memory=long_memory)
+
+        remember_result = agent.act({"steps": [{"action": "remember", "text": "a senha e 1234"}]})
+        recall_result = agent.act({"steps": [{"action": "recall", "query": "senha"}]})
+
+        self.assertEqual(remember_result[0]["message"], "Memoria registrada: a senha e 1234")
+        self.assertIn("Encontrei na memoria", recall_result[0]["message"])
 
 
 if __name__ == "__main__":

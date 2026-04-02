@@ -87,6 +87,27 @@ class Planner:
                 ]
             }
 
+        if intent == "remember":
+            return {
+                "steps": [
+                    {
+                        "action": "remember",
+                        "text": analysis.get("memory", ""),
+                    }
+                ]
+            }
+
+        if intent == "recall":
+            return {
+                "steps": [
+                    {
+                        "action": "recall",
+                        "query": analysis.get("query", ""),
+                        "limit": analysis.get("limit", 3),
+                    }
+                ]
+            }
+
         return {
             "steps": [
                 {

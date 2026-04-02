@@ -5,9 +5,10 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Agent:
-    def __init__(self, llm, memory, planner, tools, interface):
+    def __init__(self, llm, memory, planner, tools, interface, long_memory=None):
         self.llm = llm
         self.memory = memory
+        self.long_memory = long_memory
         self.planner = planner
         self.tools = tools
         self.interface = interface
@@ -75,12 +76,41 @@ class Agent:
 
         for step in plan["steps"]:
             try:
-                results.append(self.tools.execute(step))
+                results.append(self._execute_step(step))
             except Exception as exc:
                 logging.error("Erro no passo %s", step)
                 results.append({"error": str(exc), "step": step})
 
         return results
+
+    def _execute_step(self, step):
+        if not isinstance(step, dict):
+            return self.tools.execute(step)
+
+        action = step.get("action")
+        if action == "remember":
+            text = str(step.get("text", "")).strip()
+            if not text:
+                return {"error": "Nada para registrar na memoria."}
+            if self.long_memory is None:
+                return {"error": "Memoria longa indisponivel."}
+            self.long_memory.add(text)
+            return {"message": f"Memoria registrada: {text}"}
+
+        if action == "recall":
+            query = str(step.get("query", "")).strip()
+            if not query:
+                return {"error": "Consulta de memoria vazia."}
+            if self.long_memory is None:
+                return {"error": "Memoria longa indisponivel."}
+            limit = int(step.get("limit", 3))
+            matches = self.long_memory.search(query, limit=limit)
+            if not matches:
+                return {"message": f"Nao encontrei nada salvo sobre '{query}'."}
+            summary = "; ".join(item.get("text", "") for item in matches if item.get("text"))
+            return {"message": f"Encontrei na memoria: {summary}", "matches": matches}
+
+        return self.tools.execute(step)
 
     def remember(self, perception, analysis, plan, results):
         experience = {

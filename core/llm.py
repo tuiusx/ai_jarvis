@@ -1,5 +1,6 @@
-import json
+﻿import json
 import os
+import re
 import unicodedata
 
 import yaml
@@ -54,9 +55,14 @@ class LocalLLM:
         return "Ainda estou em modo local. Posso ajudar com vigilancia, cadastro de rostos, memoria simples e automacao residencial."
 
     def think(self, perception, context):
-        content = perception.get("content", "").lower().strip()
+        content_raw = str(perception.get("content", "")).strip()
+        normalized_content = self._normalize(content_raw)
 
-        if any(k in content for k in ["invas", "intrus", "estranh", "desconhec", "parede", "escura"]):
+        memory_command = self._match_memory_command(normalized_content)
+        if memory_command:
+            return memory_command
+
+        if any(k in normalized_content for k in ["invas", "intrus", "estranh", "desconhec", "parede", "escura"]):
             return {
                 "intent": "intrusion_check",
                 "response": "Detectei um possivel risco. Vou ligar a vigilancia e monitorar rostos desconhecidos.",
@@ -65,14 +71,11 @@ class LocalLLM:
             }
 
         if any(
-            k in content
+            k in normalized_content
             for k in [
                 "iniciar vigilancia",
                 "ligar vigilancia",
                 "comecar vigilancia",
-                "iniciar vigilância",
-                "ligar vigilância",
-                "começar vigilância",
                 "vigiar ambiente",
             ]
         ):
@@ -84,14 +87,11 @@ class LocalLLM:
             }
 
         if any(
-            k in content
+            k in normalized_content
             for k in [
                 "parar vigilancia",
                 "desligar vigilancia",
                 "pausar vigilancia",
-                "parar vigilância",
-                "desligar vigilância",
-                "pausar vigilância",
             ]
         ):
             return {
@@ -102,7 +102,7 @@ class LocalLLM:
             }
 
         if any(
-            k in content
+            k in normalized_content
             for k in [
                 "escanear rede",
                 "scanear rede",
@@ -121,26 +121,26 @@ class LocalLLM:
                 "action": "network_scan",
             }
 
-        home_command = self._match_home_command(content)
+        home_command = self._match_home_command(normalized_content)
         if home_command:
             return home_command
 
-        if any(k in content for k in ["olá", "ola", "oi", "bom dia", "boa tarde", "boa noite"]):
+        if any(k in normalized_content for k in ["ola", "oi", "bom dia", "boa tarde", "boa noite"]):
             return {
                 "intent": "greeting",
                 "response": "Ola! Estou pronto para proteger sua casa e controlar seus dispositivos.",
                 "needs_action": False,
             }
 
-        if any(k in content for k in ["status", "como esta", "como está", "tudo bem"]):
+        if any(k in normalized_content for k in ["status", "como esta", "tudo bem"]):
             return {
                 "intent": "status",
                 "response": "Estou online. Voce pode controlar luz, tomada, fechadura, iniciar vigilancia, escanear a rede da casa ou fazer perguntas.",
                 "needs_action": False,
             }
 
-        if self._looks_like_question(content):
-            answer = self.generate(content, context=context)
+        if self._looks_like_question(normalized_content):
+            answer = self.generate(content_raw, context=context)
             if answer.lower().startswith("erro no llm:"):
                 answer = (
                     "Estou sem acesso ao provedor de respostas agora, "
@@ -158,7 +158,7 @@ class LocalLLM:
                 Voce e JARVIS, um assistente de IA inteligente e seguro. Responda em portugues.
 
                 Contexto: {context}
-                Comando: {content}
+                Comando: {content_raw}
 
                 Gere um JSON com intent, response, needs_action e action (opcional).
                 """
@@ -185,9 +185,9 @@ class LocalLLM:
             "needs_action": False,
         }
 
-    def _match_home_command(self, content):
+    def _match_home_command(self, normalized_content):
         device_aliases = {
-            "luz": ["luz", "lampada", "lâmpada", "iluminacao", "iluminação"],
+            "luz": ["luz", "lampada", "iluminacao"],
             "tomada": ["tomada", "plug", "energia da tomada"],
             "fechadura": ["fechadura", "porta", "porta da casa", "tranca"],
         }
@@ -207,17 +207,51 @@ class LocalLLM:
         }
 
         for device, aliases in device_aliases.items():
-            if not any(alias in content for alias in aliases):
+            if not any(alias in normalized_content for alias in aliases):
                 continue
 
             candidate_actions = ("unlock", "lock") if device == "fechadura" else ("off", "on")
             for action in candidate_actions:
-                if any(alias in content for alias in action_aliases[action]):
+                if any(alias in normalized_content for alias in action_aliases[action]):
                     return {
                         "intent": "home_control",
                         "device": device,
                         "action": action,
                         "response": responses[(device, action)],
+                        "needs_action": True,
+                    }
+
+        return None
+
+    def _match_memory_command(self, normalized_content: str):
+        remember_match = re.match(
+            r"^\s*(?:lembre|guarde|memorize)(?:\s+que)?\s+(.+)$",
+            normalized_content,
+            flags=re.IGNORECASE,
+        )
+        if remember_match:
+            memory_text = remember_match.group(1).strip()
+            if memory_text:
+                return {
+                    "intent": "remember",
+                    "memory": memory_text,
+                    "response": f"Vou guardar isto na memoria: {memory_text}",
+                    "needs_action": True,
+                }
+
+        recall_patterns = (
+            r"^\s*o que voce sabe sobre\s+(.+?)\??\s*$",
+            r"^\s*o que voce lembra sobre\s+(.+?)\??\s*$",
+            r"^\s*procure na memoria\s+(.+?)\??\s*$",
+        )
+        for pattern in recall_patterns:
+            recall_match = re.match(pattern, normalized_content, flags=re.IGNORECASE)
+            if recall_match:
+                query = recall_match.group(1).strip()
+                if query:
+                    return {
+                        "intent": "recall",
+                        "query": query,
                         "needs_action": True,
                     }
 

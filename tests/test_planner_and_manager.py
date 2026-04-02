@@ -53,6 +53,14 @@ class PlannerTests(unittest.TestCase):
         plan = self.planner.create_plan({"intent": "question_answer", "response": "Resposta direta."})
         self.assertEqual(plan["steps"], [{"action": "respond", "message": "Resposta direta."}])
 
+    def test_creates_remember_plan(self):
+        plan = self.planner.create_plan({"intent": "remember", "memory": "a senha e 1234"})
+        self.assertEqual(plan["steps"], [{"action": "remember", "text": "a senha e 1234"}])
+
+    def test_creates_recall_plan(self):
+        plan = self.planner.create_plan({"intent": "recall", "query": "senha", "limit": 2})
+        self.assertEqual(plan["steps"], [{"action": "recall", "query": "senha", "limit": 2}])
+
 
 class ToolManagerTests(unittest.TestCase):
     def setUp(self):

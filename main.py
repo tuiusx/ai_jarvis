@@ -51,6 +51,7 @@ interface = MultiModalInterface()
 agent = Agent(
     llm=llm,
     memory=memory,
+    long_memory=long_memory,
     planner=planner,
     tools=tools,
     interface=interface,
