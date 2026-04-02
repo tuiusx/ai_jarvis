@@ -163,7 +163,7 @@ ai_jarvis/
 - **Totalmente Local**: LLM roda via API, mas dados ficam locais
 - **Sem Telemetria**: Não envia dados para terceiros
 - **Controle Total**: Você controla todas as configurações
-- **Licença GPL**: Código aberto e auditável
+- **Licença Proprietária**: Todos os direitos reservados
 
 ## 📈 Roadmap
 
@@ -197,26 +197,19 @@ Para dúvidas ou sugestões:
 
 ## 🔐 Licença
 
-Este projeto é licenciado sob a **GNU General Public License v3 (GPLv3)**.
+Este projeto é de propriedade exclusiva do autor e está sob licença proprietária (**All Rights Reserved**).
 
 ### O que isso significa?
 
-- ✔️ Você pode usar, estudar e modificar o código
-- ✔️ Você pode redistribuir o projeto
-- ❗ **Se redistribuir ou vender, deve manter o código aberto**
-- ❗ Alterações também devem ser GPLv3
+- ❗ Não é permitido usar, copiar, modificar, redistribuir ou vender sem autorização prévia por escrito.
+- ❗ Não há concessão de licença implícita sobre o código-fonte.
 
 ## 💼 Licenciamento Comercial
 
-Caso você queira:
+Caso você queira usar este projeto comercialmente ou em produto fechado:
 
-- Usar o AI Jarvis em um produto fechado
-- Integrar em soluções comerciais proprietárias
-- Distribuir sem abrir o código-fonte
-
-👉 **É necessária uma licença comercial**.
-
-Entre em contato com o autor para obter uma licença comercial personalizada.
+👉 **É necessária autorização formal do autor**.
+Entre em contato para obter licença comercial personalizada.
 
 📧 Contato: **[SEU EMAIL AQUI]**
 
@@ -233,7 +226,7 @@ Sempre respeite as leis locais.
 ## 🌱 Contribuições
 
 Contribuições são bem-vindas!
-Ao contribuir, você concorda que suas alterações serão licenciadas sob GPLv3.
+Ao contribuir, você concorda com os termos da licença proprietária deste repositório.
 
 ---
 
