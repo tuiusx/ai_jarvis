@@ -8,33 +8,33 @@ class Planner:
             return None
 
         intent = analysis.get("intent", "unknown")
+        default_responses = {
+            "surveillance_start": "Vigilancia iniciada.",
+            "intrusion_check": "Vigilancia iniciada.",
+            "surveillance_stop": "Vigilancia interrompida.",
+            "home_control": "Comando de automacao executado.",
+            "network_scan": "Escaneando.",
+            "question_answer": "Resposta direta.",
+        }
+        response = analysis.get("response")
+        if response:
+            analysis = {**analysis, "response": self._sanitize_text(response)}
+        elif intent in default_responses:
+            analysis = {**analysis, "response": default_responses[intent]}
 
         if intent in ["surveillance_start", "intrusion_check"]:
             return {
                 "steps": [
-                    {
-                        "tool": "surveillance",
-                        "action": "start",
-                        "duration": analysis.get("duration", 20),
-                    },
-                    {
-                        "action": "respond",
-                        "message": analysis.get("response", "Vigilancia iniciada."),
-                    },
+                    {"tool": "surveillance", "action": "start", "duration": analysis.get("duration", 20)},
+                    {"action": "respond", "message": analysis.get("response", "VigilÃ¢ncia iniciada.")},
                 ]
             }
 
         if intent == "surveillance_stop":
             return {
                 "steps": [
-                    {
-                        "tool": "surveillance",
-                        "action": "stop",
-                    },
-                    {
-                        "action": "respond",
-                        "message": analysis.get("response", "Vigilancia interrompida."),
-                    },
+                    {"tool": "surveillance", "action": "stop"},
+                    {"action": "respond", "message": analysis.get("response", "VigilÃ¢ncia interrompida.")},
                 ]
             }
 
@@ -46,56 +46,26 @@ class Planner:
                         "device": analysis.get("device", "luz"),
                         "action": analysis.get("action", "on"),
                     },
-                    {
-                        "action": "respond",
-                        "message": analysis.get("response", "Comando de automacao executado."),
-                    },
+                    {"action": "respond", "message": analysis.get("response", "Comando de automaÃ§Ã£o executado.")},
                 ]
             }
 
         if intent == "record":
-            return {
-                "steps": [
-                    {
-                        "tool": "start_recording",
-                        "duration": analysis.get("duration", 10),
-                    }
-                ]
-            }
+            return {"steps": [{"tool": "start_recording", "duration": analysis.get("duration", 10)}]}
 
         if intent == "network_scan":
             return {
                 "steps": [
-                    {
-                        "tool": "network_scan",
-                        "limit": analysis.get("limit", 50),
-                    },
-                    {
-                        "action": "respond",
-                        "message": analysis.get("response", "Escaneamento de rede concluido."),
-                    },
+                    {"tool": "network_scan", "limit": analysis.get("limit", 50)},
+                    {"action": "respond", "message": analysis.get("response", "Escaneando.")},
                 ]
             }
 
         if intent == "question_answer":
-            return {
-                "steps": [
-                    {
-                        "action": "respond",
-                        "message": analysis.get("response", "Posso tentar responder sua pergunta."),
-                    }
-                ]
-            }
+            return {"steps": [{"action": "respond", "message": analysis.get("response", "Resposta direta.")}]}
 
         if intent == "remember":
-            return {
-                "steps": [
-                    {
-                        "action": "remember",
-                        "text": analysis.get("memory", ""),
-                    }
-                ]
-            }
+            return {"steps": [{"action": "remember", "text": analysis.get("memory", "")}]}
 
         if intent == "recall":
             return {
@@ -103,19 +73,12 @@ class Planner:
                     {
                         "action": "recall",
                         "query": analysis.get("query", ""),
-                        "limit": analysis.get("limit", 3),
+                        "limit": analysis.get("limit", 2),
                     }
                 ]
             }
 
-        return {
-            "steps": [
-                {
-                    "action": "respond",
-                    "message": analysis.get("response", "Entendi."),
-                }
-            ]
-        }
+        return {"steps": [{"action": "respond", "message": analysis.get("response", "Entendi.")}]}
 
     def decide(self, text: str):
         original = text.strip()
@@ -130,7 +93,11 @@ class Planner:
         if "parar vigilancia" in normalized or "interromper vigilancia" in normalized:
             return {"type": "stop_surveillance"}
 
-        label_match = re.match(r"^\s*esse rosto [eEéÉ]\s+(.+)$", original, flags=re.IGNORECASE)
+        parts = original.split(maxsplit=3)
+        if len(parts) == 4 and self._normalize(" ".join(parts[:3])) == "esse rosto e":
+            return {"type": "label_face", "name": parts[3].strip()}
+
+        label_match = re.match(r"^\s*esse rosto [eEÃ©Ã‰]\s+(.+)$", original, flags=re.IGNORECASE)
         if label_match:
             return {"type": "label_face", "name": label_match.group(1).strip()}
 
@@ -156,3 +123,23 @@ class Planner:
     def _normalize(text: str):
         normalized = unicodedata.normalize("NFD", text.lower())
         return "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+
+    @staticmethod
+    def _sanitize_text(text: str):
+        mapping = {
+            "Ã¢": "a",
+            "Ã¡": "a",
+            "Ã£": "a",
+            "Ã§": "c",
+            "Ã©": "e",
+            "Ãª": "e",
+            "Ã­": "i",
+            "Ã³": "o",
+            "Ã´": "o",
+            "Ãº": "u",
+            "Ã‰": "E",
+        }
+        value = str(text)
+        for bad, good in mapping.items():
+            value = value.replace(bad, good)
+        return value

@@ -1,53 +1,247 @@
-# AI Jarvis - Assistente Local
+# 🧠 AI Jarvis – Assistente de IA Inteligente
 
-AI Jarvis e um assistente local com foco em vigilancia, memoria simples e automacao residencial.
+AI Jarvis é um projeto de **assistente de Inteligência Artificial inteligente**, com foco em:
 
-## Estado atual
+- **LLM Integrado**: Usa OpenAI GPT para análise inteligente de comandos
+- **Interface Multimodal**: Reconhecimento de voz + texto com wake word "jarvis"
+- **Memória Persistente**: Memória curta e longa prazo com salvamento em arquivo
+- **Ferramentas Avançadas**: Detecção de pessoas, gravação de vídeo
+- **Interface Rica**: Interface de texto colorida com comandos interativos
 
-- Interface de texto local
-- Interface multimodal em desenvolvimento
-- Vigilancia em background com deteccao de pessoas
-- Gravacao automatica do stream atual
-- Deteccao e cadastro de rostos com OpenCV
-- Memoria curta em conversa e memoria longa persistida em `state/long_term_memory.json`
-- Controle de `luz`, `tomada` e `fechadura` em modo simulado
-- Suite de testes automatizados para os modulos centrais
+## 🚀 Funcionalidades
 
-## Como executar
+### 🤖 Agente Inteligente
+- Análise de intenção com LLM (OpenAI GPT)
+- Planejamento automático de ações
+- Memória contextual inteligente
+- Execução de ferramentas integrada
 
-1. Instale as dependencias com `pip install -r requirements.txt`.
-2. Configure `OPENAI_API_KEY` ou edite `config/settings.yaml` se quiser fallback via OpenAI.
-3. Rode `python main.py` para a interface principal.
-4. Rode `python -m unittest discover -s tests -v` para executar os testes.
+### 🎤 Interface Multimodal
+- Reconhecimento de voz em português brasileiro
+- Wake word "jarvis" para ativação
+- Síntese de voz com pyttsx3
+- Timeout configurável para comandos
 
-## Comandos de exemplo
+### 🧠 Sistema de Memória
+- **Memória Curta**: Últimas 10 interações
+- **Memória Longa**: Salvamento persistente em JSON
+- Busca contextual inteligente
 
-- `vigiar ambiente`
-- `parar vigilancia`
-- `ligar a luz da casa`
-- `desligar a tomada`
-- `trancar a fechadura da casa`
-- `lembre que a chave reserva esta na gaveta`
-- `o que voce sabe sobre chave reserva`
+### 🛠️ Ferramentas Disponíveis
+- `detect_people`: Detecção de pessoas via câmera
+- `start_recording`: Gravação automática de vídeo
+- Sistema extensível para novas ferramentas
 
-## Estrutura
+### 💻 Interface de Texto
+- Interface colorida e intuitiva
+- Comandos especiais: `ajuda`, `limpar`, `memoria`, `sair`
+- Formatação rica com cores
 
-```text
-ai_jarvis/
-|-- config/
-|-- core/
-|-- interfaces/
-|-- tests/
-|-- tools/
-`-- main.py
+## 🛠️ Tecnologias
+
+- **Python 3.11+**
+- **OpenAI GPT** (análise inteligente)
+- **OpenCV** (visão computacional)
+- **SpeechRecognition** (reconhecimento de voz)
+- **PyYAML** (configurações)
+- **Colorama** (interface colorida)
+
+## 📋 Instalação e Configuração
+
+### 1. Instalar Dependências
+```bash
+pip install -r requirements.txt
 ```
 
-## Observacoes
+### 2. Configurar API da OpenAI
+Edite `config/settings.yaml`:
+```yaml
+openai:
+  api_key: "sk-sua-chave-aqui"
+  model: "gpt-3.5-turbo"
+```
 
-- Arquivos gerados em runtime ficam em `faces/`, `recordings/`, `runs/` e `state/`.
-- Esses artefatos nao devem ser versionados.
-- A interface multimodal ainda precisa de ajuste de sintaxe antes de ficar estavel.
+Ou defina a variável de ambiente:
+```bash
+export OPENAI_API_KEY="sk-sua-chave-aqui"
+```
 
-## Licenca
+### 3. Executar
+```bash
+# Interface multimodal (voz + vídeo)
+python main.py
 
-Este projeto esta licenciado sob a GNU General Public License v3 (GPLv3).
+# Interface de texto apenas
+python -c "from interfaces.text import chat; chat()"
+```
+
+## 🎯 Como Usar
+
+### Interface Multimodal
+1. Execute `python main.py`
+2. Diga "jarvis" para ativar
+3. Dê comandos como:
+   - "Olá" → Saudação
+   - "Gravar vídeo" → Inicia gravação
+   - "Detectar pessoas" → Análise de câmera
+
+### Interface de Texto
+1. Execute `python -c "from interfaces.text import chat; chat()"`
+2. Digite comandos ou use comandos especiais:
+   - `ajuda` - Mostra ajuda
+   - `limpar` - Limpa tela
+   - `memoria` - Mostra memória recente
+   - `sair` - Encerra
+
+## ⚙️ Configurações
+
+O arquivo `config/settings.yaml` permite personalizar:
+
+```yaml
+openai:
+  api_key: "sk-..."
+  model: "gpt-3.5-turbo"
+
+voice:
+  wake_word: "jarvis"
+  language: "pt-BR"
+  timeout: 8
+
+memory:
+  short_term_limit: 10
+  long_term_file: "memory.json"
+  long_term_limit: 100
+
+camera:
+  default_index: 0
+  detection_duration: 5
+
+recording:
+  default_duration: 10
+  output_dir: "recordings"
+```
+
+## 📂 Estrutura do Projeto
+
+```
+ai_jarvis/
+├── config/
+│   └── settings.yaml          # Configurações
+├── core/
+│   ├── agent.py               # Agente principal
+│   ├── llm.py                 # Integração com OpenAI
+│   ├── memory.py              # Sistema de memória
+│   └── planner.py             # Planejamento de ações
+├── interfaces/
+│   ├── multimodal.py          # Voz + texto
+│   └── text.py                # Interface de texto
+├── tools/
+│   ├── base.py                # Classe base para ferramentas
+│   ├── camera.py              # Detecção de pessoas
+│   ├── recorder.py            # Gravação de vídeo
+│   └── manager.py             # Gerenciador de ferramentas
+├── faces/                     # Dados de reconhecimento facial
+├── recordings/                # Vídeos gravados
+├── memory.json                # Memória de longo prazo
+└── main.py                    # Ponto de entrada
+```
+
+## 🔧 Desenvolvimento
+
+### Adicionando Novas Ferramentas
+1. Crie uma classe herdando de `Tool` em `tools/`
+2. Implemente o método `run()`
+3. Registre no `ToolManager` em `main.py`
+
+### Melhorando o LLM
+- Modifique prompts em `core/llm.py`
+- Adicione novos intents no método `think()`
+- Configure diferentes modelos no `settings.yaml`
+
+## 🔐 Privacidade e Segurança
+
+- **Totalmente Local**: LLM roda via API, mas dados ficam locais
+- **Sem Telemetria**: Não envia dados para terceiros
+- **Controle Total**: Você controla todas as configurações
+- **Licença GPL**: Código aberto e auditável
+
+## 📈 Roadmap
+
+- [ ] Interface web moderna
+- [ ] Suporte a múltiplos LLMs (Ollama, Claude)
+- [ ] Reconhecimento facial avançado
+- [ ] Integração com dispositivos IoT
+- [ ] Modo offline completo
+- [ ] Plugins extensíveis
+
+## 🤝 Contribuição
+
+Contribuições são bem-vindas! Sinta-se à vontade para:
+
+- Reportar bugs
+- Sugerir funcionalidades
+- Enviar pull requests
+- Melhorar documentação
+
+## 📞 Suporte
+
+Para dúvidas ou sugestões:
+- Abra uma issue no GitHub
+- Consulte a documentação
+- Verifique os logs de erro
+
+---
+
+**Desenvolvido com ❤️ para tornar a IA mais acessível e privada.**
+
+
+## 🔐 Licença
+
+Este projeto é licenciado sob a **GNU General Public License v3 (GPLv3)**.
+
+### O que isso significa?
+
+- ✔️ Você pode usar, estudar e modificar o código
+- ✔️ Você pode redistribuir o projeto
+- ❗ **Se redistribuir ou vender, deve manter o código aberto**
+- ❗ Alterações também devem ser GPLv3
+
+## 💼 Licenciamento Comercial
+
+Caso você queira:
+
+- Usar o AI Jarvis em um produto fechado
+- Integrar em soluções comerciais proprietárias
+- Distribuir sem abrir o código-fonte
+
+👉 **É necessária uma licença comercial**.
+
+Entre em contato com o autor para obter uma licença comercial personalizada.
+
+📧 Contato: **[SEU EMAIL AQUI]**
+
+## ⚠️ Aviso Legal
+
+Este software é fornecido **“como está”**, sem garantias.
+O uso é de inteira responsabilidade do usuário.
+
+Este projeto **não deve ser utilizado para vigilância ilegal** ou violação de privacidade.
+Sempre respeite as leis locais.
+
+---
+
+## 🌱 Contribuições
+
+Contribuições são bem-vindas!
+Ao contribuir, você concorda que suas alterações serão licenciadas sob GPLv3.
+
+---
+
+## 🧠 Visão do Projeto
+
+O objetivo do AI Jarvis é evoluir para um assistente local completo, com:
+
+- Visão computacional avançada
+- Processamento de voz
+- Tomada de decisão autônoma
+- Integração com hardware e sistemas reais

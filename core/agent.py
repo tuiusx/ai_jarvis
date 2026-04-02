@@ -23,11 +23,7 @@ class Agent:
             return None
 
         if not isinstance(data, dict):
-            data = {
-                "mode": "text",
-                "content": str(data),
-                "confidence": 1.0,
-            }
+            data = {"mode": "text", "content": str(data), "confidence": 1.0}
 
         content = data.get("content", "").strip()
         mode = data.get("mode", "unknown")
@@ -76,41 +72,35 @@ class Agent:
 
         for step in plan["steps"]:
             try:
-                results.append(self._execute_step(step))
+                if isinstance(step, dict) and step.get("action") == "remember":
+                    text = step.get("text", "")
+                    if self.long_memory is None:
+                        results.append({"error": "Memoria de longo prazo nao configurada."})
+                    else:
+                        self.long_memory.add(text)
+                        results.append({"message": f"Memoria registrada: {text}"})
+                    continue
+
+                if isinstance(step, dict) and step.get("action") == "recall":
+                    query = step.get("query", "")
+                    limit = step.get("limit", 2)
+                    if self.long_memory is None:
+                        results.append({"error": "Memoria de longo prazo nao configurada."})
+                    else:
+                        matches = self.long_memory.search(query, limit=limit)
+                        if matches:
+                            summary = "; ".join(item.get("text", "") for item in matches)
+                            results.append({"message": f"Encontrei na memoria: {summary}"})
+                        else:
+                            results.append({"message": f"Nao encontrei nada salvo sobre '{query}'."})
+                    continue
+
+                results.append(self.tools.execute(step))
             except Exception as exc:
                 logging.error("Erro no passo %s", step)
                 results.append({"error": str(exc), "step": step})
 
         return results
-
-    def _execute_step(self, step):
-        if not isinstance(step, dict):
-            return self.tools.execute(step)
-
-        action = step.get("action")
-        if action == "remember":
-            text = str(step.get("text", "")).strip()
-            if not text:
-                return {"error": "Nada para registrar na memoria."}
-            if self.long_memory is None:
-                return {"error": "Memoria longa indisponivel."}
-            self.long_memory.add(text)
-            return {"message": f"Memoria registrada: {text}"}
-
-        if action == "recall":
-            query = str(step.get("query", "")).strip()
-            if not query:
-                return {"error": "Consulta de memoria vazia."}
-            if self.long_memory is None:
-                return {"error": "Memoria longa indisponivel."}
-            limit = int(step.get("limit", 3))
-            matches = self.long_memory.search(query, limit=limit)
-            if not matches:
-                return {"message": f"Nao encontrei nada salvo sobre '{query}'."}
-            summary = "; ".join(item.get("text", "") for item in matches if item.get("text"))
-            return {"message": f"Encontrei na memoria: {summary}", "matches": matches}
-
-        return self.tools.execute(step)
 
     def remember(self, perception, analysis, plan, results):
         experience = {
@@ -124,9 +114,6 @@ class Agent:
         logging.info("Experiencia salva")
 
     def run(self):
-        if self.interface is None:
-            raise RuntimeError("Agent.run() requer uma interface configurada.")
-
         self.interface.output("JARVIS online. Sempre escutando...")
 
         while self.running:

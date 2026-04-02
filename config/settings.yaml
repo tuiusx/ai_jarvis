@@ -20,17 +20,3 @@ camera:
 recording:
   default_duration: 10
   output_dir: "recordings"
-
-surveillance:
-  model_path: "yolov8n.pt"
-  detect_interval: 0.4
-  record_cooldown: 30
-
-home_assistant:
-  base_url: ""
-  token: ""
-  verify_ssl: true
-  devices:
-    luz: ""
-    tomada: ""
-    fechadura: ""

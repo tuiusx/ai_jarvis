@@ -5,26 +5,22 @@ class ToolManager:
     def register(self, tool):
         self.tools[tool.name] = tool
 
-    def get(self, name):
-        return self.tools.get(name)
-
-    def execute(self, step, **kwargs):
+    def execute(self, step):
         if isinstance(step, dict):
-            if "action" in step and step["action"] == "respond":
-                return {"message": step.get("message", "Acao executada.")}
-
+            # Prioriza ferramenta para nao perder passos com "action" e "tool".
             if "tool" in step:
                 tool_name = step["tool"]
-                tool = self.get(tool_name)
-                if tool is None:
-                    return {"error": f"Ferramenta '{tool_name}' não encontrada."}
-                payload = {k: v for k, v in step.items() if k != "tool"}
-                return tool.run(**payload)
+                if tool_name in self.tools:
+                    kwargs = {k: v for k, v in step.items() if k != "tool"}
+                    return self.tools[tool_name].run(**kwargs)
+                return {"error": f"Ferramenta '{tool_name}' não encontrada."}
 
-        elif isinstance(step, str):
-            tool = self.get(step)
-            if tool is None:
-                raise KeyError(f"Ferramenta desconhecida: {step}")
-            return tool.run(**kwargs)
+            if step.get("action") == "respond":
+                return {"message": step.get("message", "Ação executada.")}
 
-        raise ValueError("Passo de execucao invalido.")
+            return {"error": f"Acao '{step.get('action')}' nao suportada no ToolManager."}
+
+        return self.execute_legacy(step)
+
+    def execute_legacy(self, name, **kwargs):
+        return self.tools[name].run(**kwargs)
