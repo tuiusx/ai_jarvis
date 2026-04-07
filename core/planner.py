@@ -8,19 +8,16 @@ class Planner:
             return None
 
         intent = analysis.get("intent", "unknown")
-        default_responses = {
+        default_response = {
             "surveillance_start": "Vigilancia iniciada.",
             "intrusion_check": "Vigilancia iniciada.",
             "surveillance_stop": "Vigilancia interrompida.",
             "home_control": "Comando de automacao executado.",
             "network_scan": "Escaneando.",
             "question_answer": "Resposta direta.",
-        }
-        response = analysis.get("response")
-        if response:
-            analysis = {**analysis, "response": self._sanitize_text(response)}
-        elif intent in default_responses:
-            analysis = {**analysis, "response": default_responses[intent]}
+        }.get(intent, "Entendi.")
+        response = analysis.get("response") or default_response
+        analysis = {**analysis, "response": response}
 
         if intent in ["surveillance_start", "intrusion_check"]:
             return {
