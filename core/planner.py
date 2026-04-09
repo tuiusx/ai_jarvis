@@ -77,6 +77,60 @@ class Planner:
 
         return {"steps": [{"action": "respond", "message": analysis.get("response", "Entendi.")}]}
 
+    def create_plan(self, analysis):
+        if not analysis:
+            return None
+
+        intent = analysis.get("intent", "unknown")
+        response = analysis.get("response") or {
+            "surveillance_start": "Vigilancia iniciada.",
+            "intrusion_check": "Vigilancia iniciada.",
+            "surveillance_stop": "Vigilancia interrompida.",
+            "home_control": "Comando de automacao executado.",
+            "network_scan": "Escaneando.",
+            "question_answer": "Resposta direta.",
+        }.get(intent, "Entendi.")
+
+        if intent in {"surveillance_start", "intrusion_check"}:
+            return {
+                "steps": [
+                    {"tool": "surveillance", "action": "start", "duration": analysis.get("duration", 20)},
+                    {"action": "respond", "message": response},
+                ]
+            }
+
+        if intent == "surveillance_stop":
+            return {"steps": [{"tool": "surveillance", "action": "stop"}, {"action": "respond", "message": response}]}
+
+        if intent == "home_control":
+            return {
+                "steps": [
+                    {
+                        "tool": "home_control",
+                        "device": analysis.get("device", "luz"),
+                        "action": analysis.get("action", "on"),
+                    },
+                    {"action": "respond", "message": response},
+                ]
+            }
+
+        if intent == "record":
+            return {"steps": [{"tool": "start_recording", "duration": analysis.get("duration", 10)}]}
+
+        if intent == "network_scan":
+            return {"steps": [{"tool": "network_scan", "limit": analysis.get("limit", 50)}, {"action": "respond", "message": response}]}
+
+        if intent == "question_answer":
+            return {"steps": [{"action": "respond", "message": response}]}
+
+        if intent == "remember":
+            return {"steps": [{"action": "remember", "text": analysis.get("memory", "")}]}
+
+        if intent == "recall":
+            return {"steps": [{"action": "recall", "query": analysis.get("query", ""), "limit": analysis.get("limit", 2)}]}
+
+        return {"steps": [{"action": "respond", "message": response}]}
+
     def decide(self, text: str):
         original = text.strip()
         if not original:

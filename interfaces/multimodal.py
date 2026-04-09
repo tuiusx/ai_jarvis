@@ -5,9 +5,10 @@ import speech_recognition as sr
 
 
 class MultiModalInterface:
-    def __init__(self, wake_word="jarvis"):
+    def __init__(self, wake_word="jarvis", min_command_interval: float = 0.8):
         self.wake_word = wake_word.lower()
         self.recognizer = sr.Recognizer()
+        self.min_command_interval = max(0.0, float(min_command_interval))
 
         self.recognizer.energy_threshold = 300
         self.recognizer.dynamic_energy_threshold = True
@@ -35,6 +36,7 @@ class MultiModalInterface:
             self.tts = None
 
         self.last_wake_time = 0
+        self.last_command_time = 0.0
         self.wake_timeout = 8
         self.listening = False
 
@@ -63,6 +65,10 @@ class MultiModalInterface:
                 return None
 
             if time.time() - self.last_wake_time <= self.wake_timeout:
+                now = time.monotonic()
+                if self.min_command_interval > 0 and now - self.last_command_time < self.min_command_interval:
+                    return None
+                self.last_command_time = now
                 return {"mode": "voice", "content": text, "confidence": 0.9}
 
         except sr.WaitTimeoutError:

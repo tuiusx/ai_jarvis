@@ -4,8 +4,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from core.settings import get_setting, load_settings
+
 
 REQUIRED_IGNORE_RULES = (
+    "config/settings.local.yaml",
     "recordings/",
     "runs/",
     "faces/",
@@ -129,6 +132,13 @@ def run_checks(cwd: Path, skip_tests: bool):
             messages.append("[FAIL] Testes falharam.\n" + tests_output.strip())
 
     settings_file = cwd / "config" / "settings.yaml"
+    settings_example = cwd / "config" / "settings.example.yaml"
+    if not settings_example.exists():
+        ok = False
+        messages.append("[FAIL] config/settings.example.yaml nao encontrado.")
+    else:
+        messages.append("[OK] config/settings.example.yaml presente.")
+
     if settings_file.exists():
         settings_text = settings_file.read_text(encoding="utf-8", errors="ignore")
         for line in settings_text.splitlines():
@@ -145,6 +155,19 @@ def run_checks(cwd: Path, skip_tests: bool):
                 break
         else:
             messages.append("[OK] config/settings.yaml sem api_key fixa.")
+
+        loaded = load_settings(str(cwd))
+        mode = str(get_setting(loaded, "app.mode", "dev")).lower()
+        long_memory_file = str(get_setting(loaded, "memory.long_term_file", "state/memory.json"))
+        if not long_memory_file.startswith("state/"):
+            ok = False
+            messages.append("[FAIL] memory.long_term_file deve ficar em state/ para evitar commits acidentais.")
+        else:
+            messages.append("[OK] memory.long_term_file em pasta state/.")
+
+        if mode == "prod" and not bool(get_setting(loaded, "security.enforce_env_secrets", False)):
+            ok = False
+            messages.append("[FAIL] Em modo prod, security.enforce_env_secrets deve estar true.")
 
     return ok, messages
 

@@ -1,0 +1,7 @@
+# Arquivo local (nao versionado): copie para config/settings.local.yaml
+# Exemplo:
+openai:
+  api_key: "coloque-apenas-localmente"
+
+app:
+  mode: "dev"

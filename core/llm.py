@@ -4,25 +4,21 @@ import re
 import unicodedata
 
 try:
-    import yaml
-except Exception:  # pragma: no cover - fallback para ambientes sem PyYAML
-    yaml = None
-
-try:
     from openai import OpenAI
 except Exception:  # pragma: no cover - fallback para ambientes sem SDK OpenAI
     OpenAI = None
 
+from core.settings import load_settings
+
 
 class LocalLLM:
     def __init__(self):
-        config_path = "config/settings.yaml"
-        self.config = {}
-        if os.path.exists(config_path) and yaml is not None:
-            with open(config_path, "r", encoding="utf-8") as file:
-                self.config = yaml.safe_load(file) or {}
-
+        self.config = load_settings()
+        app_mode = self.config.get("app", {}).get("mode", "dev")
+        enforce_env_secrets = bool(self.config.get("security", {}).get("enforce_env_secrets", False))
         api_key = os.getenv("OPENAI_API_KEY") or self.config.get("openai", {}).get("api_key", "")
+        if app_mode == "prod" and enforce_env_secrets and "OPENAI_API_KEY" not in os.environ:
+            api_key = ""
         self.model = self.config.get("openai", {}).get("model", "gpt-3.5-turbo")
         self.client = OpenAI(api_key=api_key) if api_key and OpenAI is not None else None
 
@@ -174,6 +170,7 @@ class LocalLLM:
             "tomada": ["tomada", "plug", "energia da tomada"],
             "fechadura": ["fechadura", "porta", "porta da casa", "tranca"],
         }
+        device_aliases["luz"] = ["luz", "lampada", "iluminacao", "iluminacao da casa"]
         action_aliases = {
             "on": ["ligar", "acender", "ativar"],
             "off": ["desligar", "apagar", "desativar"],

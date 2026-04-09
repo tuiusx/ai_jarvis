@@ -4,6 +4,7 @@ pillow
 click
 colorama
 PyYAML
+cryptography
 openai
 langchain
 opencv-python

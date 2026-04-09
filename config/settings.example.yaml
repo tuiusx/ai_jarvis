@@ -1,11 +1,8 @@
-# Configurações do JARVIS
 app:
-  mode: "dev"
+  mode: "dev"  # dev | prod
 
 openai:
-  # Use preferencialmente a variavel de ambiente OPENAI_API_KEY.
-  # Evite salvar chaves reais em arquivos versionados.
-  api_key: ""
+  api_key: ""  # use OPENAI_API_KEY in production
   model: "gpt-3.5-turbo"
 
 voice:

@@ -1,7 +1,14 @@
+import base64
+import hashlib
 import json
 import os
 import unicodedata
 from datetime import datetime
+
+try:
+    from cryptography.fernet import Fernet
+except Exception:  # pragma: no cover - dependency opcional
+    Fernet = None
 
 
 class ShortTermMemory:
@@ -25,22 +32,49 @@ class ShortTermMemory:
 
 
 class LongTermMemory:
-    def __init__(self, file_path="memory.json", storage_path=None):
+    def __init__(
+        self,
+        file_path="state/memory.json",
+        storage_path=None,
+        limit: int = 100,
+        encryption_key: str | None = None,
+        encryption_key_env: str = "JARVIS_MEMORY_KEY",
+    ):
         self.file_path = storage_path or file_path
+        self.limit = max(1, int(limit))
+        self._fernet = self._build_fernet(encryption_key or os.getenv(encryption_key_env, ""))
+        os.makedirs(os.path.dirname(self.file_path) or ".", exist_ok=True)
         self.data = self._load()
 
     def _load(self):
         if os.path.exists(self.file_path):
             try:
-                with open(self.file_path, "r", encoding="utf-8") as file:
-                    return json.load(file)
+                with open(self.file_path, "rb") as file:
+                    raw = file.read()
+                if not raw:
+                    return []
+
+                if self._fernet is not None:
+                    try:
+                        decrypted = self._fernet.decrypt(raw)
+                        loaded = json.loads(decrypted.decode("utf-8"))
+                        return loaded if isinstance(loaded, list) else []
+                    except Exception:
+                        pass
+
+                decoded = raw.decode("utf-8")
+                loaded = json.loads(decoded)
+                return loaded if isinstance(loaded, list) else []
             except Exception:
                 return []
         return []
 
     def _save(self):
-        with open(self.file_path, "w", encoding="utf-8") as file:
-            json.dump(self.data, file, ensure_ascii=False, indent=2)
+        payload = json.dumps(self.data, ensure_ascii=False, indent=2).encode("utf-8")
+        if self._fernet is not None:
+            payload = self._fernet.encrypt(payload)
+        with open(self.file_path, "wb") as file:
+            file.write(payload)
 
     def add(self, text):
         entry = {
@@ -49,7 +83,7 @@ class LongTermMemory:
             "type": "general",
         }
         self.data.append(entry)
-        self.data = self.data[-100:]
+        self.data = self.data[-self.limit:]
         self._save()
         return entry
 
@@ -71,3 +105,12 @@ class LongTermMemory:
     def _normalize(text: str):
         normalized = unicodedata.normalize("NFD", str(text).lower())
         return "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+
+    @staticmethod
+    def _build_fernet(secret: str):
+        secret = (secret or "").strip()
+        if not secret or Fernet is None:
+            return None
+        digest = hashlib.sha256(secret.encode("utf-8")).digest()
+        key = base64.urlsafe_b64encode(digest)
+        return Fernet(key)

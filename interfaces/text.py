@@ -4,6 +4,9 @@ import time
 from colorama import Back, Fore, Style, init
 
 from core.agent import Agent
+from core.audit import AuditLogger
+from core.rate_limit import CommandRateLimiter
+from core.settings import get_setting, load_settings
 
 
 init(autoreset=True)
@@ -40,19 +43,40 @@ def chat():
     from tools.recorder import RecorderTool
     from tools.surveillance_tool import SurveillanceTool
 
+    settings = load_settings()
+    short_limit = int(get_setting(settings, "memory.short_term_limit", 10))
+    long_path = str(get_setting(settings, "memory.long_term_file", "state/memory.json"))
+    long_limit = int(get_setting(settings, "memory.long_term_limit", 100))
+    key_env = str(get_setting(settings, "memory.encryption_key_env", "JARVIS_MEMORY_KEY"))
+    app_mode = str(get_setting(settings, "app.mode", "dev"))
+    rate_seconds = float(get_setting(settings, "security.min_command_interval_seconds", 0.8))
+    audit_path = str(get_setting(settings, "security.audit_log_file", "state/audit.log.jsonl"))
+
     llm = LocalLLM()
-    memory = ShortTermMemory()
-    long_memory = LongTermMemory()
+    memory = ShortTermMemory(limit=short_limit)
+    long_memory = LongTermMemory(file_path=long_path, limit=long_limit, encryption_key_env=key_env)
     planner = Planner()
+    rate_limiter = CommandRateLimiter(min_interval_seconds=rate_seconds)
+    audit = AuditLogger(path=audit_path)
 
     tools = ToolManager()
     tools.register(CameraTool())
-    tools.register(RecorderTool())
+    tools.register(RecorderTool(output_dir=str(get_setting(settings, "recording.output_dir", "recordings"))))
     tools.register(HomeAutomationTool())
     tools.register(NetworkDiscoveryTool())
     tools.register(SurveillanceTool(callback=lambda evt: print(f"{Fore.MAGENTA}Evento de vigilancia: {evt}{Style.RESET_ALL}")))
 
-    agent = Agent(llm=llm, memory=memory, long_memory=long_memory, planner=planner, tools=tools, interface=None)
+    agent = Agent(
+        llm=llm,
+        memory=memory,
+        long_memory=long_memory,
+        planner=planner,
+        tools=tools,
+        interface=None,
+        rate_limiter=rate_limiter,
+        audit_logger=audit,
+        app_mode=app_mode,
+    )
 
     print(f"{Fore.GREEN}JARVIS online! Digite sua mensagem ou comando.{Style.RESET_ALL}")
     print()
@@ -65,6 +89,11 @@ def chat():
             break
 
         if not user_input:
+            continue
+
+        allowed, wait_seconds = rate_limiter.allow()
+        if not allowed:
+            print(f"{Fore.YELLOW}Aguarde {wait_seconds:.2f}s antes do proximo comando.{Style.RESET_ALL}")
             continue
 
         command = user_input.lower()

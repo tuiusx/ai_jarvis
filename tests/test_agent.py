@@ -99,7 +99,7 @@ class AgentTests(unittest.TestCase):
 
         self.assertEqual(len(memory.store_calls), 1)
         self.assertEqual(len(tools.executed_steps), 2)
-        self.assertIn("JARVIS online. Sempre escutando...", interface.outputs)
+        self.assertTrue(any(msg.startswith("JARVIS online") for msg in interface.outputs))
         self.assertIn("A luz da casa esta ligada.", interface.outputs)
         self.assertIn("Ligando a luz.", interface.outputs)
 

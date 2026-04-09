@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff bandit pip-audit
+
+      - name: Unit tests
+        run: python -m pytest -q
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Bandit security scan
+        run: bandit -c bandit.yaml -r core interfaces tools main.py dashboard.py superpowers.py
+
+      - name: Dependency audit (non-blocking)
+        continue-on-error: true
+        run: pip-audit --progress-spinner off
