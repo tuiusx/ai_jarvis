@@ -1,6 +1,8 @@
 # Configurações do JARVIS
 openai:
-  api_key: "sk-your-openai-api-key-here"  # Substitua pela sua chave da OpenAI
+  # Use preferencialmente a variavel de ambiente OPENAI_API_KEY.
+  # Evite salvar chaves reais em arquivos versionados.
+  api_key: ""
   model: "gpt-3.5-turbo"
 
 voice:

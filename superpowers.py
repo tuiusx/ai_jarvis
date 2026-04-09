@@ -10,6 +10,7 @@ REQUIRED_IGNORE_RULES = (
     "runs/",
     "faces/",
     "state/",
+    "memory.json",
     "runs.zip",
     "yolov8*.pt",
     "face_recognizer.task",
@@ -126,6 +127,24 @@ def run_checks(cwd: Path, skip_tests: bool):
         else:
             ok = False
             messages.append("[FAIL] Testes falharam.\n" + tests_output.strip())
+
+    settings_file = cwd / "config" / "settings.yaml"
+    if settings_file.exists():
+        settings_text = settings_file.read_text(encoding="utf-8", errors="ignore")
+        for line in settings_text.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("api_key:"):
+                continue
+            value = stripped.split(":", 1)[1].strip().strip("\"'")
+            if value and value.lower() not in {"null", "none"}:
+                ok = False
+                messages.append(
+                    "[FAIL] config/settings.yaml contem api_key preenchida. "
+                    "Prefira OPENAI_API_KEY por variavel de ambiente."
+                )
+                break
+        else:
+            messages.append("[OK] config/settings.yaml sem api_key fixa.")
 
     return ok, messages
 

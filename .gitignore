@@ -211,6 +211,7 @@ recordings/
 runs/
 faces/
 state/
+memory.json
 runs.zip
 yolov8*.pt
 face_recognizer.task

@@ -94,6 +94,10 @@ class Planner:
         if len(parts) == 4 and self._normalize(" ".join(parts[:3])) == "esse rosto e":
             return {"type": "label_face", "name": parts[3].strip()}
 
+        label_match_clean = re.match(r"^\s*esse rosto [eEéÉ]\s+(.+)$", original, flags=re.IGNORECASE)
+        if label_match_clean:
+            return {"type": "label_face", "name": label_match_clean.group(1).strip()}
+
         label_match = re.match(r"^\s*esse rosto [eEÃ©Ã‰]\s+(.+)$", original, flags=re.IGNORECASE)
         if label_match:
             return {"type": "label_face", "name": label_match.group(1).strip()}
