@@ -40,6 +40,16 @@ class FakeLongMemory:
         matches = [item for item in self.items if query in item["text"]]
         return matches[:limit]
 
+    def export_encrypted(self, path, password):
+        if not password:
+            raise ValueError("senha obrigatoria")
+        return path
+
+    def import_encrypted(self, path, password):
+        if not password:
+            raise ValueError("senha obrigatoria")
+        return {"imported": 1, "total": len(self.items)}
+
 
 class FakeLLM:
     def think(self, perception, context):
@@ -113,6 +123,24 @@ class AgentTests(unittest.TestCase):
 
         self.assertEqual(remember_result[0]["message"], "Memoria registrada: a senha e 1234")
         self.assertIn("Encontrei na memoria", recall_result[0]["message"])
+
+    def test_act_handles_status_and_memory_backup_actions(self):
+        memory = FakeMemory()
+        long_memory = FakeLongMemory()
+        long_memory.add("senha backup")
+        agent = Agent(FakeLLM(), memory, FakePlanner(), FakeTools(), FakeInterface([]), long_memory=long_memory)
+
+        status_result = agent.act({"steps": [{"action": "status"}]})
+        export_result = agent.act(
+            {"steps": [{"action": "memory_export", "path": "state/backup.enc", "password": "segredo"}]}
+        )
+        import_result = agent.act(
+            {"steps": [{"action": "memory_import", "path": "state/backup.enc", "password": "segredo"}]}
+        )
+
+        self.assertIn("uptime", status_result[0]["status"])
+        self.assertIn("Backup", export_result[0]["message"])
+        self.assertIn("importado", import_result[0]["message"].lower())
 
 
 if __name__ == "__main__":

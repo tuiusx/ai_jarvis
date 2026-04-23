@@ -41,6 +41,12 @@ class LocalLLMTests(unittest.TestCase):
         self.assertEqual(result["device"], "luz")
         self.assertEqual(result["action"], "on")
 
+    def test_matches_light_command_with_accents(self):
+        result = self.llm.think({"content": "Ligar a lâmpada da casa"}, "")
+        self.assertEqual(result["intent"], "home_control")
+        self.assertEqual(result["device"], "luz")
+        self.assertEqual(result["action"], "on")
+
     def test_matches_outlet_command(self):
         result = self.llm.think({"content": "desligar a tomada da casa"}, "")
         self.assertEqual(result["device"], "tomada")
@@ -73,6 +79,23 @@ class LocalLLMTests(unittest.TestCase):
         result = self.llm.think({"content": "o que voce sabe sobre senha do cofre?"}, "")
         self.assertEqual(result["intent"], "recall")
         self.assertEqual(result["query"], "senha do cofre")
+
+    def test_status_intent_requests_runtime_summary(self):
+        result = self.llm.think({"content": "status"}, "")
+        self.assertEqual(result["intent"], "status")
+        self.assertTrue(result["needs_action"])
+
+    def test_matches_memory_export_command(self):
+        result = self.llm.think({"content": "exportar memoria state/backup.enc senha segredo123"}, "")
+        self.assertEqual(result["intent"], "memory_export")
+        self.assertEqual(result["path"], "state/backup.enc")
+        self.assertEqual(result["password"], "segredo123")
+
+    def test_matches_memory_import_command(self):
+        result = self.llm.think({"content": "importar memoria state/backup.enc senha segredo123"}, "")
+        self.assertEqual(result["intent"], "memory_import")
+        self.assertEqual(result["path"], "state/backup.enc")
+        self.assertEqual(result["password"], "segredo123")
 
     def test_returns_safe_unknown_response_when_not_understood(self):
         result = self.llm.think({"content": "comando aleatorio"}, "")

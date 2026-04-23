@@ -31,9 +31,7 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(plan["steps"][1]["message"], "Trancando a fechadura.")
 
     def test_creates_surveillance_plan(self):
-        plan = self.planner.create_plan(
-            {"intent": "surveillance_start", "duration": 15, "response": "Monitorando."}
-        )
+        plan = self.planner.create_plan({"intent": "surveillance_start", "duration": 15, "response": "Monitorando."})
 
         self.assertEqual(plan["steps"][0]["tool"], "surveillance")
         self.assertEqual(plan["steps"][0]["action"], "start")
@@ -61,6 +59,18 @@ class PlannerTests(unittest.TestCase):
         plan = self.planner.create_plan({"intent": "recall", "query": "senha", "limit": 2})
         self.assertEqual(plan["steps"], [{"action": "recall", "query": "senha", "limit": 2}])
 
+    def test_creates_status_plan(self):
+        plan = self.planner.create_plan({"intent": "status"})
+        self.assertEqual(plan["steps"], [{"action": "status"}])
+
+    def test_creates_memory_export_plan(self):
+        plan = self.planner.create_plan({"intent": "memory_export", "path": "state/backup.enc", "password": "123"})
+        self.assertEqual(plan["steps"], [{"action": "memory_export", "path": "state/backup.enc", "password": "123"}])
+
+    def test_creates_memory_import_plan(self):
+        plan = self.planner.create_plan({"intent": "memory_import", "path": "state/backup.enc", "password": "123"})
+        self.assertEqual(plan["steps"], [{"action": "memory_import", "path": "state/backup.enc", "password": "123"}])
+
 
 class ToolManagerTests(unittest.TestCase):
     def setUp(self):
@@ -77,7 +87,7 @@ class ToolManagerTests(unittest.TestCase):
 
     def test_returns_error_for_missing_tool(self):
         result = self.manager.execute({"tool": "missing"})
-        self.assertIn("não encontrada", result["error"])
+        self.assertIn("nao encontrada", result["error"])
 
 
 if __name__ == "__main__":

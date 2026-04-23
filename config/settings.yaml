@@ -1,4 +1,4 @@
-# Configurações do JARVIS
+# Configuracoes do JARVIS
 app:
   mode: "dev"
 
@@ -27,10 +27,15 @@ recording:
   default_duration: 10
   output_dir: "recordings"
 
+home_automation:
+  dry_run: false
+
 security:
   enforce_env_secrets: false
   min_command_interval_seconds: 0.8
   audit_log_file: "state/audit.log.jsonl"
+  audit_max_bytes: 5242880
+  audit_backup_count: 3
 
 retention:
   enabled: true
@@ -44,3 +49,9 @@ dashboard:
   host: "127.0.0.1"
   port: 8787
   max_events: 200
+
+notifications:
+  enabled: false
+  channel: "console" # console | telegram
+  telegram_bot_token_env: "JARVIS_TELEGRAM_BOT_TOKEN"
+  telegram_chat_id_env: "JARVIS_TELEGRAM_CHAT_ID"

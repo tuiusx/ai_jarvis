@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import superpowers
 
@@ -33,6 +35,14 @@ class SuperpowersChecksTests(unittest.TestCase):
         missing = superpowers.find_missing_ignore_rules(rules)
         self.assertIn("state/", missing)
         self.assertIn("runs.zip", missing)
+
+    def test_quick_mode_skips_pytest_execution(self):
+        with patch("superpowers.run_pytest", side_effect=AssertionError("pytest nao deveria rodar")), patch(
+            "superpowers.run_git_ls_files", return_value=[]
+        ):
+            ok, messages = superpowers.run_checks(cwd=Path.cwd(), skip_tests=False, quick=True)
+            self.assertTrue(ok)
+            self.assertTrue(any("QUICK" in line for line in messages))
 
 
 if __name__ == "__main__":

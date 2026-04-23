@@ -5,3 +5,12 @@ openai:
 
 app:
   mode: "dev"
+
+# Descomente para testar simulacao sem acionar dispositivos reais
+# home_automation:
+#   dry_run: true
+
+# Descomente para notificacoes criticas no Telegram
+# notifications:
+#   enabled: true
+#   channel: "telegram"

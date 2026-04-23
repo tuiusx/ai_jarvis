@@ -4,6 +4,7 @@ import json
 import os
 import unicodedata
 from datetime import datetime
+from pathlib import Path
 
 try:
     from cryptography.fernet import Fernet
@@ -100,6 +101,47 @@ class LongTermMemory:
 
         results.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
         return results[:limit]
+
+    def export_encrypted(self, target_path: str, password: str):
+        fernet = self._build_fernet(password)
+        if fernet is None:
+            raise ValueError("Senha invalida para exportacao.")
+
+        output = Path(target_path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        payload = json.dumps(self.data, ensure_ascii=False, indent=2).encode("utf-8")
+        output.write_bytes(fernet.encrypt(payload))
+        return str(output)
+
+    def import_encrypted(self, source_path: str, password: str):
+        fernet = self._build_fernet(password)
+        if fernet is None:
+            raise ValueError("Senha invalida para importacao.")
+
+        source = Path(source_path)
+        if not source.exists():
+            raise FileNotFoundError(f"Arquivo de backup nao encontrado: {source_path}")
+
+        decrypted = fernet.decrypt(source.read_bytes())
+        loaded = json.loads(decrypted.decode("utf-8"))
+        if not isinstance(loaded, list):
+            raise ValueError("Formato de backup invalido.")
+
+        imported = 0
+        for item in loaded:
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text", "")).strip()
+            timestamp = str(item.get("timestamp", "")).strip() or datetime.now().isoformat()
+            item_type = str(item.get("type", "general")).strip() or "general"
+            if not text:
+                continue
+            self.data.append({"text": text, "timestamp": timestamp, "type": item_type})
+            imported += 1
+
+        self.data = self.data[-self.limit:]
+        self._save()
+        return {"imported": imported, "total": len(self.data)}
 
     @staticmethod
     def _normalize(text: str):

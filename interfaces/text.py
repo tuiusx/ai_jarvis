@@ -5,6 +5,7 @@ from colorama import Back, Fore, Style, init
 
 from core.agent import Agent
 from core.audit import AuditLogger
+from core.notifications import CriticalNotifier
 from core.rate_limit import CommandRateLimiter
 from core.settings import get_setting, load_settings
 
@@ -51,18 +52,32 @@ def chat():
     app_mode = str(get_setting(settings, "app.mode", "dev"))
     rate_seconds = float(get_setting(settings, "security.min_command_interval_seconds", 0.8))
     audit_path = str(get_setting(settings, "security.audit_log_file", "state/audit.log.jsonl"))
+    audit_max_bytes = int(get_setting(settings, "security.audit_max_bytes", 5_242_880))
+    audit_backup_count = int(get_setting(settings, "security.audit_backup_count", 3))
+    dry_run = bool(get_setting(settings, "home_automation.dry_run", False))
 
     llm = LocalLLM()
     memory = ShortTermMemory(limit=short_limit)
     long_memory = LongTermMemory(file_path=long_path, limit=long_limit, encryption_key_env=key_env)
     planner = Planner()
     rate_limiter = CommandRateLimiter(min_interval_seconds=rate_seconds)
-    audit = AuditLogger(path=audit_path)
+    notifier = CriticalNotifier(
+        enabled=bool(get_setting(settings, "notifications.enabled", False)),
+        channel=str(get_setting(settings, "notifications.channel", "console")),
+        telegram_token_env=str(get_setting(settings, "notifications.telegram_bot_token_env", "JARVIS_TELEGRAM_BOT_TOKEN")),
+        telegram_chat_id_env=str(get_setting(settings, "notifications.telegram_chat_id_env", "JARVIS_TELEGRAM_CHAT_ID")),
+    )
+    audit = AuditLogger(
+        path=audit_path,
+        max_bytes=audit_max_bytes,
+        backup_count=audit_backup_count,
+        notify_callback=notifier.notify,
+    )
 
     tools = ToolManager()
     tools.register(CameraTool())
     tools.register(RecorderTool(output_dir=str(get_setting(settings, "recording.output_dir", "recordings"))))
-    tools.register(HomeAutomationTool())
+    tools.register(HomeAutomationTool(dry_run=dry_run))
     tools.register(NetworkDiscoveryTool())
     tools.register(SurveillanceTool(callback=lambda evt: print(f"{Fore.MAGENTA}Evento de vigilancia: {evt}{Style.RESET_ALL}")))
 
@@ -107,6 +122,11 @@ def chat():
             continue
         if command in ["ajuda", "help", "?"]:
             print_header()
+            continue
+        if command == "status":
+            status = agent.runtime_status()
+            print(f"{Fore.CYAN}{agent.format_status_message(status)}{Style.RESET_ALL}")
+            print()
             continue
         if command == "memoria":
             context = memory.get_context()

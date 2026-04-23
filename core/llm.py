@@ -41,6 +41,42 @@ class LocalLLM:
         content_raw = str(perception.get("content", "")).strip()
         content = self._normalize(content_raw)
 
+        memory_export = re.match(r"^\s*exportar memoria(?: para)?\s+(\S+)(?:\s+senha\s+(.+))?\s*$", content, flags=re.IGNORECASE)
+        if memory_export:
+            password = (memory_export.group(2) or "").strip()
+            if not password:
+                return {
+                    "intent": "question_answer",
+                    "response": "Para exportar a memoria com seguranca, informe uma senha no comando.",
+                    "needs_action": False,
+                }
+            return {
+                "intent": "memory_export",
+                "path": memory_export.group(1).strip(),
+                "password": password,
+                "response": "Gerando backup seguro da memoria.",
+                "needs_action": True,
+                "action": "memory_export",
+            }
+
+        memory_import = re.match(r"^\s*importar memoria(?: de)?\s+(\S+)(?:\s+senha\s+(.+))?\s*$", content, flags=re.IGNORECASE)
+        if memory_import:
+            password = (memory_import.group(2) or "").strip()
+            if not password:
+                return {
+                    "intent": "question_answer",
+                    "response": "Para importar a memoria com seguranca, informe a senha do backup.",
+                    "needs_action": False,
+                }
+            return {
+                "intent": "memory_import",
+                "path": memory_import.group(1).strip(),
+                "password": password,
+                "response": "Importando backup seguro da memoria.",
+                "needs_action": True,
+                "action": "memory_import",
+            }
+
         if any(k in content for k in ["invas", "intrus", "estranh", "desconhec", "parede", "escura"]):
             return {
                 "intent": "intrusion_check",
@@ -104,6 +140,18 @@ class LocalLLM:
                 "needs_action": True,
             }
 
+        home_command = self._match_home_command(content)
+        if home_command:
+            return home_command
+
+        if any(k in content for k in ["status", "como esta", "tudo bem", "resumo do sistema"]):
+            return {
+                "intent": "status",
+                "response": "Vou montar um resumo do status atual.",
+                "needs_action": True,
+                "action": "status",
+            }
+
         if self._looks_like_question(content):
             answer = self.generate(content_raw, context=context)
             if answer.lower().startswith("erro no llm:"):
@@ -114,21 +162,10 @@ class LocalLLM:
                 "needs_action": False,
             }
 
-        home_command = self._match_home_command(content)
-        if home_command:
-            return home_command
-
         if any(k in content for k in ["ola", "oi", "bom dia", "boa tarde", "boa noite"]):
             return {
                 "intent": "greeting",
                 "response": "Ola! Estou pronto para proteger sua casa e controlar seus dispositivos.",
-                "needs_action": False,
-            }
-
-        if any(k in content for k in ["status", "como esta", "tudo bem"]):
-            return {
-                "intent": "status",
-                "response": "Estou online. Voce pode controlar luz, tomada, fechadura, iniciar vigilancia, escanear a rede da casa ou fazer perguntas.",
                 "needs_action": False,
             }
 
@@ -166,11 +203,10 @@ class LocalLLM:
     def _match_home_command(self, content):
         content = self._normalize(content)
         device_aliases = {
-            "luz": ["luz", "lampada", "lâmpada", "iluminacao", "iluminação"],
+            "luz": ["luz", "lampada", "iluminacao", "iluminacao da casa"],
             "tomada": ["tomada", "plug", "energia da tomada"],
             "fechadura": ["fechadura", "porta", "porta da casa", "tranca"],
         }
-        device_aliases["luz"] = ["luz", "lampada", "iluminacao", "iluminacao da casa"]
         action_aliases = {
             "on": ["ligar", "acender", "ativar"],
             "off": ["desligar", "apagar", "desativar"],

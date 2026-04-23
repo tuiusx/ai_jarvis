@@ -22,6 +22,11 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(decision["type"], "label_face")
         self.assertEqual(decision["name"], "Ricardo")
 
+    def test_detects_face_labeling_with_accent(self):
+        decision = self.planner.decide("esse rosto é João")
+        self.assertEqual(decision["type"], "label_face")
+        self.assertEqual(decision["name"], "João")
+
     def test_detects_memory_commands(self):
         remember = self.planner.decide("lembre que a senha fica no cofre")
         self.assertEqual(remember["type"], "remember")

@@ -90,7 +90,7 @@ def run_pytest(cwd: Path):
     return result.returncode == 0, result.stdout + result.stderr
 
 
-def run_checks(cwd: Path, skip_tests: bool):
+def run_checks(cwd: Path, skip_tests: bool, quick: bool = False):
     ok = True
     messages = []
 
@@ -121,7 +121,10 @@ def run_checks(cwd: Path, skip_tests: bool):
     else:
         messages.append("[OK] Nenhum artefato sensivel esta rastreado no Git.")
 
-    if skip_tests:
+    should_skip_tests = skip_tests or quick
+    if should_skip_tests:
+        if quick:
+            messages.append("[QUICK] Modo rapido ativo: pulando pytest para feedback em segundos.")
         messages.append("[SKIP] Testes nao executados (flag --skip-tests).")
     else:
         tests_ok, tests_output = run_pytest(cwd)
@@ -133,11 +136,18 @@ def run_checks(cwd: Path, skip_tests: bool):
 
     settings_file = cwd / "config" / "settings.yaml"
     settings_example = cwd / "config" / "settings.example.yaml"
+    precommit_file = cwd / ".pre-commit-config.yaml"
     if not settings_example.exists():
         ok = False
         messages.append("[FAIL] config/settings.example.yaml nao encontrado.")
     else:
         messages.append("[OK] config/settings.example.yaml presente.")
+
+    if not precommit_file.exists():
+        ok = False
+        messages.append("[FAIL] .pre-commit-config.yaml nao encontrado.")
+    else:
+        messages.append("[OK] .pre-commit-config.yaml presente.")
 
     if settings_file.exists():
         settings_text = settings_file.read_text(encoding="utf-8", errors="ignore")
@@ -175,10 +185,11 @@ def run_checks(cwd: Path, skip_tests: bool):
 def main():
     parser = argparse.ArgumentParser(description="Validador rapido de qualidade e privacidade do projeto.")
     parser.add_argument("--skip-tests", action="store_true", help="Nao executa pytest.")
+    parser.add_argument("--quick", action="store_true", help="Modo rapido: executa apenas checks essenciais.")
     args = parser.parse_args()
 
     cwd = Path.cwd()
-    ok, messages = run_checks(cwd=cwd, skip_tests=args.skip_tests)
+    ok, messages = run_checks(cwd=cwd, skip_tests=args.skip_tests, quick=args.quick)
     for message in messages:
         print(message)
 

@@ -35,10 +35,21 @@ DEFAULT_SETTINGS = {
         "default_duration": 10,
         "output_dir": "recordings",
     },
+    "home_automation": {
+        "dry_run": False,
+    },
     "security": {
         "enforce_env_secrets": False,
         "min_command_interval_seconds": 0.8,
         "audit_log_file": "state/audit.log.jsonl",
+        "audit_max_bytes": 5_242_880,
+        "audit_backup_count": 3,
+    },
+    "notifications": {
+        "enabled": False,
+        "channel": "console",
+        "telegram_bot_token_env": "JARVIS_TELEGRAM_BOT_TOKEN",
+        "telegram_chat_id_env": "JARVIS_TELEGRAM_CHAT_ID",
     },
     "retention": {
         "enabled": True,

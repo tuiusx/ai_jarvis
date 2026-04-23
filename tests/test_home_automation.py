@@ -33,6 +33,16 @@ class HomeAutomationToolTests(unittest.TestCase):
         self.assertIn("nao gerenciado", unknown_device["error"])
         self.assertIn("nao suportada", invalid_action["error"])
 
+    def test_dry_run_does_not_change_internal_state(self):
+        tool = HomeAutomationTool(dry_run=True)
+        before = dict(tool.state)
+        result = tool.run(device="luz", action="on")
+        after = dict(tool.state)
+
+        self.assertTrue(result["dry_run"])
+        self.assertEqual(before, after)
+        self.assertIn("simulacao", result["message"].lower())
+
 
 if __name__ == "__main__":
     unittest.main()
