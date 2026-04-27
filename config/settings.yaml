@@ -18,6 +18,18 @@ memory:
   long_term_file: "state/memory.json"
   long_term_limit: 100
   encryption_key_env: "JARVIS_MEMORY_KEY"
+  semantic:
+    enabled: true
+    model_name: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    index_path: "state/memory_semantic.faiss"
+    db_path: "state/memory_semantic.db"
+    top_k: 8
+    response_k: 3
+    batch_size: 256
+    mask_sensitive: true
+    score_threshold: 0.45
+    hnsw_m: 32
+    hnsw_ef_search: 128
 
 camera:
   default_index: 0
@@ -29,6 +41,11 @@ recording:
 
 home_automation:
   dry_run: false
+  custom_devices_path: "state/home_custom_devices.json"
+  iot_webhook:
+    enabled: false
+    url: ""
+    timeout_seconds: 4
 
 security:
   enforce_env_secrets: false
@@ -36,6 +53,53 @@ security:
   audit_log_file: "state/audit.log.jsonl"
   audit_max_bytes: 5242880
   audit_backup_count: 3
+  access_control:
+    enabled: false
+    owner_name: "owner"
+    permission_ttl_seconds: 900
+    min_confidence: 0.75
+    camera_index: 0
+    auto_reload_gallery_seconds: 30
+    roles_file: "state/access_roles.json"
+    liveness_enabled: true
+    liveness_min_movement_pixels: 4
+  network_verification:
+    enabled: false
+    mode: "block" # block | warn
+    allowed_cidrs: []
+    check_interval_seconds: 5
+  network_monitor:
+    enabled: false
+    backend: "scapy"
+    scope: "lan"
+    interface: "auto"
+    promiscuous: true
+    bpf_filter: ""
+    write_pcap: true
+    metadata_log_path: "state/network_traffic.jsonl"
+    pcap_dir: "state/network_captures"
+    rotate_max_mb: 128
+    rotate_keep_files: 5
+    auto_start: false
+  network_enforcement:
+    enabled: false
+    default_block_duration_seconds: 0
+    machine_registry_path: "state/machine_registry.json"
+    state_path: "state/network_blocks.json"
+    provider_priority: ["openwrt", "local"]
+    openwrt:
+      host: ""
+      port: 22
+      username: ""
+      ssh_key_path: ""
+      lan_zone: "lan"
+      wan_zone: "wan"
+      apply_timeout_seconds: 12
+  critical_confirmation:
+    enabled: true
+    ttl_seconds: 90
+    pin_env: "JARVIS_ADMIN_PIN"
+    require_pin: true
 
 retention:
   enabled: true
@@ -50,8 +114,43 @@ dashboard:
   port: 8787
   max_events: 200
 
+performance:
+  enabled_metrics: true
+  slow_command_threshold_ms: 700
+  lazy_init_enabled: true
+  tool_retry_attempts: 1
+  tool_retry_backoff_seconds: 0.2
+
+internet:
+  search_timeout_seconds: 8
+
+setup:
+  first_run_enabled: true
+  state_file: "state/first_run_setup.json"
+  face_base_dir: "faces"
+  capture_timeout_seconds: 20
+
 notifications:
   enabled: false
   channel: "console" # console | telegram
+  min_severity: "critical" # info | warning | error | critical
   telegram_bot_token_env: "JARVIS_TELEGRAM_BOT_TOKEN"
   telegram_chat_id_env: "JARVIS_TELEGRAM_CHAT_ID"
+  webhook_url: ""
+  webhook_token_env: "JARVIS_WEBHOOK_TOKEN"
+
+plugins:
+  enabled: true
+  directory: "state/plugins"
+
+automation:
+  enabled: true
+  state_path: "state/automation_hub.json"
+  scheduler_interval_seconds: 1.0
+  auto_start_scheduler: true
+
+backup:
+  enabled: true
+  output_dir: "state/exports"
+  password_env: "JARVIS_BACKUP_PASSWORD"
+  interval_minutes: 0

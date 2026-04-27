@@ -4,7 +4,7 @@ pillow
 click
 colorama
 PyYAML
-cryptography
+cryptography==47.0.0
 openai
 langchain
 opencv-python
@@ -16,3 +16,6 @@ pyttsx3
 sounddevice
 pyaudio
 face-recognition
+sentence-transformers
+faiss-cpu
+scapy

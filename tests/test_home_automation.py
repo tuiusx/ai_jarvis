@@ -1,11 +1,18 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from tools.home_automation import HomeAutomationTool
 
 
 class HomeAutomationToolTests(unittest.TestCase):
     def setUp(self):
-        self.tool = HomeAutomationTool()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        custom_path = Path(self.temp_dir.name) / "state" / "home_custom_devices.json"
+        self.tool = HomeAutomationTool(custom_devices_path=str(custom_path))
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_controls_light_and_outlet(self):
         light = self.tool.run(device="luz", action="on")
@@ -34,7 +41,8 @@ class HomeAutomationToolTests(unittest.TestCase):
         self.assertIn("nao suportada", invalid_action["error"])
 
     def test_dry_run_does_not_change_internal_state(self):
-        tool = HomeAutomationTool(dry_run=True)
+        custom_path = Path(self.temp_dir.name) / "state" / "home_custom_devices_dry.json"
+        tool = HomeAutomationTool(dry_run=True, custom_devices_path=str(custom_path))
         before = dict(tool.state)
         result = tool.run(device="luz", action="on")
         after = dict(tool.state)
@@ -42,6 +50,40 @@ class HomeAutomationToolTests(unittest.TestCase):
         self.assertTrue(result["dry_run"])
         self.assertEqual(before, after)
         self.assertIn("simulacao", result["message"].lower())
+
+    def test_registers_custom_device_and_controls_it(self):
+        register = self.tool.run(
+            action="register_device",
+            device="janela",
+            open_action="abrir",
+            close_action="fechar",
+        )
+        open_result = self.tool.run(device="janela", action="abrir")
+        close_result = self.tool.run(device="janela", action="fechar")
+
+        self.assertIn("cadastrados", register["message"].lower())
+        self.assertEqual(open_result["status"], "aberta")
+        self.assertEqual(close_result["status"], "fechada")
+
+    def test_dispatches_iot_webhook_when_enabled(self):
+        custom_path = Path(self.temp_dir.name) / "state" / "home_custom_devices_webhook.json"
+        calls = []
+
+        def fake_sender(url, payload, timeout):
+            calls.append((url, payload, timeout))
+            return True
+
+        tool = HomeAutomationTool(
+            custom_devices_path=str(custom_path),
+            iot_webhook_enabled=True,
+            iot_webhook_url="https://iot.local/event",
+            webhook_sender=fake_sender,
+        )
+        result = tool.run(device="luz", action="on")
+
+        self.assertIn("iot", result)
+        self.assertTrue(result["iot"]["sent"])
+        self.assertEqual(len(calls), 1)
 
 
 if __name__ == "__main__":

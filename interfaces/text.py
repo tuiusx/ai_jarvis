@@ -4,6 +4,7 @@ import time
 from colorama import Back, Fore, Style, init
 
 from core.app_factory import AppFactory
+from core.first_run_setup import ensure_first_run_setup
 from core.settings import get_setting, load_settings
 
 
@@ -71,6 +72,16 @@ def chat():
     print_header()
 
     settings = load_settings()
+    try:
+        setup_summary = ensure_first_run_setup(settings=settings, root_dir=".")
+    except Exception as exc:
+        print(f"{Fore.RED}Falha na configuracao inicial: {exc}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Finalize o cadastro facial do administrador e reinicie o JARVIS.{Style.RESET_ALL}")
+        return
+
+    if setup_summary.get("status") == "configured":
+        print(f"{Fore.GREEN}Administrador configurado: {setup_summary.get('owner_name')}{Style.RESET_ALL}")
+
     app_mode = str(get_setting(settings, "app.mode", "dev"))
     factory = AppFactory(settings=settings)
     context = factory.build(interface=None, retention_summary={})
@@ -146,6 +157,16 @@ def chat():
     if context.network_monitor is not None:
         try:
             context.network_monitor.stop()
+        except Exception:
+            pass
+    if context.automation_hub is not None:
+        try:
+            context.automation_hub.close()
+        except Exception:
+            pass
+    if context.backup_manager is not None:
+        try:
+            context.backup_manager.close()
         except Exception:
             pass
 

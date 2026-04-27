@@ -5,12 +5,29 @@ from pathlib import Path
 
 
 class AuditLogger:
-    def __init__(self, path: str, max_bytes: int = 5 * 1024 * 1024, backup_count: int = 3, notify_callback=None):
+    SEVERITY_ORDER = {
+        "info": 0,
+        "warning": 1,
+        "error": 2,
+        "critical": 3,
+    }
+
+    def __init__(
+        self,
+        path: str,
+        max_bytes: int = 5 * 1024 * 1024,
+        backup_count: int = 3,
+        notify_callback=None,
+        notify_min_severity: str = "critical",
+    ):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.max_bytes = max(0, int(max_bytes))
         self.backup_count = max(0, int(backup_count))
         self.notify_callback = notify_callback
+        self.notify_min_severity = str(notify_min_severity or "critical").lower()
+        if self.notify_min_severity not in self.SEVERITY_ORDER:
+            self.notify_min_severity = "critical"
         self._lock = threading.Lock()
         self._metrics = {
             "total_events": 0,
@@ -18,7 +35,13 @@ class AuditLogger:
             "error_events": 0,
             "rate_limited_events": 0,
             "tool_errors": 0,
+            "network_packets_total": 0,
+            "network_unique_ips": 0,
+            "network_monitor_errors": 0,
+            "network_untrusted_blocks": 0,
+            "slow_commands": 0,
         }
+        self._seen_network_ips = set()
 
     def log(self, event: str, severity: str = "info", **data):
         severity = str(severity or "info").lower()
@@ -35,9 +58,10 @@ class AuditLogger:
                 handle.write(line + "\n")
             self._update_metrics(entry)
 
-        if severity == "critical" and callable(self.notify_callback):
+        if callable(self.notify_callback):
             try:
-                self.notify_callback(entry)
+                if self.SEVERITY_ORDER.get(severity, -1) >= self.SEVERITY_ORDER.get(self.notify_min_severity, 3):
+                    self.notify_callback(entry)
             except Exception:
                 pass
 
@@ -85,6 +109,20 @@ class AuditLogger:
             self._metrics["rate_limited_events"] += 1
         if event == "tool.execute" and severity == "error":
             self._metrics["tool_errors"] += 1
+        if event == "network.monitor_packet":
+            self._metrics["network_packets_total"] += 1
+            data = entry.get("data", {})
+            for key in ("src_ip", "dst_ip"):
+                value = str(data.get(key, "")).strip()
+                if value:
+                    self._seen_network_ips.add(value)
+            self._metrics["network_unique_ips"] = len(self._seen_network_ips)
+        if event in {"network.monitor_autostart_failed", "network.monitor_error"}:
+            self._metrics["network_monitor_errors"] += 1
+        if event == "security.network_untrusted_blocked":
+            self._metrics["network_untrusted_blocks"] += 1
+        if event == "performance.slow_command":
+            self._metrics["slow_commands"] += 1
 
     def _rotate_if_needed(self, next_line_bytes: int):
         if self.max_bytes <= 0 or not self.path.exists():

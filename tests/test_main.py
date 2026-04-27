@@ -94,6 +94,7 @@ class MainTests(unittest.TestCase):
 
         with (
             patch.object(jarvis_main, "load_settings", return_value=settings),
+            patch.object(jarvis_main, "ensure_first_run_setup", return_value={"status": "already_configured", "owner_name": "dono"}),
             patch.object(jarvis_main, "AppFactory", FakeAppFactory),
             patch.object(jarvis_main, "RetentionManager", FakeRetentionManager),
             patch.object(jarvis_main, "MultiModalInterface", FakeInterface),

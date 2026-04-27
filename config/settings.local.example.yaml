@@ -6,11 +6,98 @@ openai:
 app:
   mode: "dev"
 
+# Descomente para ajustar memoria semantica local
+# memory:
+#   semantic:
+#     enabled: true
+#     score_threshold: 0.45
+#     hnsw_ef_search: 128
+
+# Descomente para ajustar timeout da busca web
+# internet:
+#   search_timeout_seconds: 12
+
+# Descomente para configurar onboarding de primeira execucao
+# setup:
+#   first_run_enabled: true
+#   capture_timeout_seconds: 25
+
+# Descomente para ajustar telemetria/performance
+# performance:
+#   enabled_metrics: true
+#   slow_command_threshold_ms: 700
+#   lazy_init_enabled: true
+#   tool_retry_attempts: 2
+#   tool_retry_backoff_seconds: 0.2
+
+# Descomente para ativar controle de acesso por camera
+# security:
+#   access_control:
+#     enabled: true
+#     owner_name: "seu_usuario"
+#     permission_ttl_seconds: 900
+#     min_confidence: 0.75
+#     camera_index: 0
+#     auto_reload_gallery_seconds: 30
+#     roles_file: "state/access_roles.json"
+#     liveness_enabled: true
+#     liveness_min_movement_pixels: 4
+
+# Descomente para verificacao e rastreamento de rede
+# security:
+#   network_verification:
+#     enabled: true
+#     mode: "block"
+#     allowed_cidrs: ["192.168.0.0/16", "10.0.0.0/8"]
+#   network_monitor:
+#     enabled: true
+#     interface: "auto"
+#     write_pcap: true
+#   network_enforcement:
+#     enabled: true
+#     machine_registry_path: "state/machine_registry.json"
+#     provider_priority: ["openwrt", "local"]
+#     openwrt:
+#       host: "192.168.1.1"
+#       username: "root"
+#       ssh_key_path: "C:/Users/voce/.ssh/id_rsa"
+#   critical_confirmation:
+#     enabled: true
+#     ttl_seconds: 120
+#     pin_env: "JARVIS_ADMIN_PIN"
+#     require_pin: true
+
 # Descomente para testar simulacao sem acionar dispositivos reais
 # home_automation:
 #   dry_run: true
+#   custom_devices_path: "state/home_custom_devices.json"
+#   iot_webhook:
+#     enabled: true
+#     url: "https://seu-gateway-iot.local/event"
+#     timeout_seconds: 4
 
 # Descomente para notificacoes criticas no Telegram
 # notifications:
 #   enabled: true
 #   channel: "telegram"
+#   min_severity: "warning"
+#   webhook_url: "https://hooks.example.com/jarvis-alerts"
+
+# Descomente para plugins locais de comandos
+# plugins:
+#   enabled: true
+#   directory: "state/plugins"
+
+# Descomente para automacao avancada (cenas/regras/agendamentos)
+# automation:
+#   enabled: true
+#   state_path: "state/automation_hub.json"
+#   scheduler_interval_seconds: 1.0
+#   auto_start_scheduler: true
+
+# Descomente para backup criptografado automatico
+# backup:
+#   enabled: true
+#   output_dir: "state/exports"
+#   password_env: "JARVIS_BACKUP_PASSWORD"
+#   interval_minutes: 60

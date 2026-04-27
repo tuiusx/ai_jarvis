@@ -65,6 +65,30 @@ class LocalLLMTests(unittest.TestCase):
         self.assertEqual(result["intent"], "network_scan")
         self.assertEqual(result["action"], "network_scan")
 
+    def test_matches_network_search_command(self):
+        result = self.llm.think({"content": "pesquise na internet sobre energia solar residencial"}, "")
+        self.assertEqual(result["intent"], "network_search")
+        self.assertEqual(result["action"], "network_search")
+        self.assertIn("energia solar", result["query"])
+
+    def test_matches_network_monitor_and_block_commands(self):
+        start = self.llm.think({"content": "iniciar rastreamento de rede"}, "")
+        block = self.llm.think({"content": "bloquear internet da maquina tv sala"}, "")
+        isolate = self.llm.think({"content": "bloquear maquina tv sala"}, "")
+        list_blocks = self.llm.think({"content": "listar bloqueios de rede"}, "")
+
+        self.assertEqual(start["intent"], "network_monitor_start")
+        self.assertEqual(block["intent"], "network_block_machine_internet")
+        self.assertEqual(isolate["intent"], "network_block_machine_isolate")
+        self.assertEqual(list_blocks["intent"], "network_list_blocks")
+
+    def test_matches_machine_registry_command(self):
+        result = self.llm.think({"content": "registrar maquina notebook sala aa:bb:cc:dd:ee:ff"}, "")
+
+        self.assertEqual(result["intent"], "network_register_machine")
+        self.assertEqual(result["alias"], "notebook sala")
+        self.assertEqual(result["mac"], "aa:bb:cc:dd:ee:ff")
+
     def test_matches_question_answer_intent(self):
         result = self.llm.think({"content": "qual a diferenca entre ram e rom?"}, "")
         self.assertEqual(result["intent"], "question_answer")

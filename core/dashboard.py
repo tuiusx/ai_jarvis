@@ -35,6 +35,11 @@ def _fallback_metrics(log_file: Path):
             "error_events": 0,
             "rate_limited_events": 0,
             "tool_errors": 0,
+            "network_packets_total": 0,
+            "network_unique_ips": 0,
+            "network_monitor_errors": 0,
+            "network_untrusted_blocks": 0,
+            "slow_commands": 0,
         }
 
     total = 0
@@ -42,6 +47,11 @@ def _fallback_metrics(log_file: Path):
     errors = 0
     rate_limited = 0
     tool_errors = 0
+    network_packets_total = 0
+    network_ips = set()
+    network_monitor_errors = 0
+    network_untrusted_blocks = 0
+    slow_commands = 0
     with log_file.open("r", encoding="utf-8", errors="ignore") as handle:
         for raw in handle:
             try:
@@ -59,12 +69,30 @@ def _fallback_metrics(log_file: Path):
                 rate_limited += 1
             if event == "tool.execute" and severity == "error":
                 tool_errors += 1
+            if event == "network.monitor_packet":
+                network_packets_total += 1
+                data = item.get("data", {})
+                for key in ("src_ip", "dst_ip"):
+                    value = str(data.get(key, "")).strip()
+                    if value:
+                        network_ips.add(value)
+            if event in {"network.monitor_autostart_failed", "network.monitor_error"}:
+                network_monitor_errors += 1
+            if event == "security.network_untrusted_blocked":
+                network_untrusted_blocks += 1
+            if event == "performance.slow_command":
+                slow_commands += 1
     return {
         "total_events": total,
         "critical_events": critical,
         "error_events": errors,
         "rate_limited_events": rate_limited,
         "tool_errors": tool_errors,
+        "network_packets_total": network_packets_total,
+        "network_unique_ips": len(network_ips),
+        "network_monitor_errors": network_monitor_errors,
+        "network_untrusted_blocks": network_untrusted_blocks,
+        "slow_commands": slow_commands,
     }
 
 
@@ -75,6 +103,7 @@ def build_dashboard_server(
     app_mode: str = "dev",
     max_events: int = 200,
     metrics_provider=None,
+    admin_provider=None,
 ):
     started_at = time.time()
     log_file = Path(audit_log_path)
@@ -120,11 +149,56 @@ def build_dashboard_server(
                 self._write_json(payload)
                 return
 
+            if parsed.path == "/api/admin/diagnostics":
+                if not callable(admin_provider):
+                    self._write_json({"error": "admin_provider_not_configured"}, status=503)
+                    return
+                payload = admin_provider(action="diagnostics", payload={}) or {}
+                self._write_json(payload)
+                return
+
+            if parsed.path == "/api/admin/capabilities":
+                if not callable(admin_provider):
+                    self._write_json({"capabilities": []})
+                    return
+                payload = admin_provider(action="capabilities", payload={}) or {}
+                self._write_json(payload)
+                return
+
             if parsed.path in {"/", "/index.html"}:
                 self._write_html(_dashboard_html())
                 return
 
             self._write_json({"error": "not_found"}, status=404)
+
+        def do_POST(self):  # noqa: N802
+            parsed = urlparse(self.path)
+            if parsed.path != "/api/admin/action":
+                self._write_json({"error": "not_found"}, status=404)
+                return
+            if not callable(admin_provider):
+                self._write_json({"error": "admin_provider_not_configured"}, status=503)
+                return
+
+            raw_length = self.headers.get("Content-Length", "0")
+            try:
+                length = max(0, int(raw_length))
+            except Exception:
+                length = 0
+            body = self.rfile.read(length) if length > 0 else b"{}"
+            try:
+                payload = json.loads(body.decode("utf-8") or "{}")
+            except Exception:
+                self._write_json({"error": "invalid_json_body"}, status=400)
+                return
+
+            action = str(payload.get("action", "")).strip()
+            data = payload.get("payload", {})
+            if not action:
+                self._write_json({"error": "missing_action"}, status=400)
+                return
+            result = admin_provider(action=action, payload=data) or {}
+            self._write_json(result)
 
         def log_message(self, format, *args):  # noqa: A003
             return
@@ -139,6 +213,7 @@ def start_dashboard_in_background(
     app_mode: str = "dev",
     max_events: int = 200,
     metrics_provider=None,
+    admin_provider=None,
 ):
     server = build_dashboard_server(
         host=host,
@@ -147,6 +222,7 @@ def start_dashboard_in_background(
         app_mode=app_mode,
         max_events=max_events,
         metrics_provider=metrics_provider,
+        admin_provider=admin_provider,
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

@@ -1,19 +1,25 @@
 import json
 import os
-import re
-import unicodedata
 
 try:
     from openai import OpenAI
 except Exception:  # pragma: no cover - fallback para ambientes sem SDK OpenAI
     OpenAI = None
 
+from core.intent_router import IntentRouter
 from core.settings import load_settings
 
 
 class LocalLLM:
-    def __init__(self):
-        self.config = load_settings()
+    def __init__(self, settings=None, router=None):
+        self.config = settings or load_settings()
+        custom_commands_path = self.config.get("home_automation", {}).get("custom_devices_path", "state/home_custom_devices.json")
+        plugins_cfg = self.config.get("plugins", {}) or {}
+        self.router = router or IntentRouter(
+            custom_commands_path=str(custom_commands_path),
+            plugin_directory=str(plugins_cfg.get("directory", "state/plugins")),
+            plugins_enabled=bool(plugins_cfg.get("enabled", True)),
+        )
         app_mode = self.config.get("app", {}).get("mode", "dev")
         enforce_env_secrets = bool(self.config.get("security", {}).get("enforce_env_secrets", False))
         api_key = os.getenv("OPENAI_API_KEY") or self.config.get("openai", {}).get("api_key", "")
@@ -39,133 +45,19 @@ class LocalLLM:
 
     def think(self, perception, context):
         content_raw = str(perception.get("content", "")).strip()
-        content = self._normalize(content_raw)
+        content = self.router.normalize(content_raw)
 
-        memory_export = re.match(r"^\s*exportar memoria(?: para)?\s+(\S+)(?:\s+senha\s+(.+))?\s*$", content, flags=re.IGNORECASE)
-        if memory_export:
-            password = (memory_export.group(2) or "").strip()
-            if not password:
-                return {
-                    "intent": "question_answer",
-                    "response": "Para exportar a memoria com seguranca, informe uma senha no comando.",
-                    "needs_action": False,
-                }
-            return {
-                "intent": "memory_export",
-                "path": memory_export.group(1).strip(),
-                "password": password,
-                "response": "Gerando backup seguro da memoria.",
-                "needs_action": True,
-                "action": "memory_export",
-            }
+        routed = self.router.route(content_raw)
+        if routed is not None:
+            return routed
 
-        memory_import = re.match(r"^\s*importar memoria(?: de)?\s+(\S+)(?:\s+senha\s+(.+))?\s*$", content, flags=re.IGNORECASE)
-        if memory_import:
-            password = (memory_import.group(2) or "").strip()
-            if not password:
-                return {
-                    "intent": "question_answer",
-                    "response": "Para importar a memoria com seguranca, informe a senha do backup.",
-                    "needs_action": False,
-                }
-            return {
-                "intent": "memory_import",
-                "path": memory_import.group(1).strip(),
-                "password": password,
-                "response": "Importando backup seguro da memoria.",
-                "needs_action": True,
-                "action": "memory_import",
-            }
-
-        if any(k in content for k in ["invas", "intrus", "estranh", "desconhec", "parede", "escura"]):
-            return {
-                "intent": "intrusion_check",
-                "response": "Detectei um possivel risco. Vou ligar a vigilancia e monitorar rostos desconhecidos.",
-                "needs_action": True,
-                "action": "surveillance_start",
-            }
-
-        if any(k in content for k in ["iniciar vigilancia", "ligar vigilancia", "comecar vigilancia", "vigiar ambiente"]):
-            return {
-                "intent": "surveillance_start",
-                "response": "Vigilancia ativada. Monitorando ambiente.",
-                "needs_action": True,
-                "action": "surveillance_start",
-            }
-
-        if any(k in content for k in ["parar vigilancia", "desligar vigilancia", "pausar vigilancia"]):
-            return {
-                "intent": "surveillance_stop",
-                "response": "Vigilancia pausada.",
-                "needs_action": True,
-                "action": "surveillance_stop",
-            }
-
-        if any(
-            k in content
-            for k in [
-                "escanear rede",
-                "scanear rede",
-                "varrer rede",
-                "dispositivos na rede",
-                "quem esta na rede",
-                "quem esta conectado",
-                "rede da casa",
-                "wifi da casa",
-            ]
-        ):
-            return {
-                "intent": "network_scan",
-                "response": "Vou identificar os dispositivos visiveis na rede da casa.",
-                "needs_action": True,
-                "action": "network_scan",
-            }
-
-        remember_match = re.match(r"^\s*(?:lembre|guarde|memorize)(?:\s+que)?\s+(.+)$", content)
-        if remember_match:
-            return {
-                "intent": "remember",
-                "memory": remember_match.group(1).strip(),
-                "response": "Posso guardar isso na memoria.",
-                "needs_action": True,
-            }
-
-        recall_match = re.match(r"^\s*o que voce sabe sobre\s+(.+?)[\?]?\s*$", content)
-        if recall_match:
-            return {
-                "intent": "recall",
-                "query": recall_match.group(1).strip(),
-                "limit": 2,
-                "response": "Vou consultar minha memoria sobre isso.",
-                "needs_action": True,
-            }
-
-        home_command = self._match_home_command(content)
-        if home_command:
-            return home_command
-
-        if any(k in content for k in ["status", "como esta", "tudo bem", "resumo do sistema"]):
-            return {
-                "intent": "status",
-                "response": "Vou montar um resumo do status atual.",
-                "needs_action": True,
-                "action": "status",
-            }
-
-        if self._looks_like_question(content):
+        if self.router.looks_like_question(content):
             answer = self.generate(content_raw, context=context)
             if answer.lower().startswith("erro no llm:"):
                 answer = "Estou sem acesso ao provedor de respostas agora, mas sigo pronto para comandos da casa, vigilancia e rede local."
             return {
                 "intent": "question_answer",
                 "response": answer,
-                "needs_action": False,
-            }
-
-        if any(k in content for k in ["ola", "oi", "bom dia", "boa tarde", "boa noite"]):
-            return {
-                "intent": "greeting",
-                "response": "Ola! Estou pronto para proteger sua casa e controlar seus dispositivos.",
                 "needs_action": False,
             }
 
@@ -199,56 +91,3 @@ class LocalLLM:
             "response": "Desculpe, nao entendi. Tente algo como 'ligar a luz da casa', 'desligar a tomada' ou 'trancar a fechadura'.",
             "needs_action": False,
         }
-
-    def _match_home_command(self, content):
-        content = self._normalize(content)
-        device_aliases = {
-            "luz": ["luz", "lampada", "iluminacao", "iluminacao da casa"],
-            "tomada": ["tomada", "plug", "energia da tomada"],
-            "fechadura": ["fechadura", "porta", "porta da casa", "tranca"],
-        }
-        action_aliases = {
-            "on": ["ligar", "acender", "ativar"],
-            "off": ["desligar", "apagar", "desativar"],
-            "lock": ["trancar", "fechar", "bloquear"],
-            "unlock": ["destrancar", "abrir", "liberar"],
-        }
-        responses = {
-            ("luz", "on"): "Ligando a luz da casa.",
-            ("luz", "off"): "Desligando a luz da casa.",
-            ("tomada", "on"): "Ligando a tomada da casa.",
-            ("tomada", "off"): "Desligando a tomada da casa.",
-            ("fechadura", "lock"): "Trancando a fechadura da casa.",
-            ("fechadura", "unlock"): "Destrancando a fechadura da casa.",
-        }
-
-        for device, aliases in device_aliases.items():
-            if not any(alias in content for alias in aliases):
-                continue
-
-            candidate_actions = ("unlock", "lock") if device == "fechadura" else ("off", "on")
-            for action in candidate_actions:
-                if any(alias in content for alias in action_aliases[action]):
-                    return {
-                        "intent": "home_control",
-                        "device": device,
-                        "action": action,
-                        "response": responses[(device, action)],
-                        "needs_action": True,
-                    }
-
-        return None
-
-    @staticmethod
-    def _looks_like_question(content: str):
-        if not content:
-            return False
-        if "?" in content:
-            return True
-        starters = ("o que", "qual", "quais", "como", "quando", "onde", "por que", "porque", "quem", "quanto", "me explica", "explique")
-        return content.strip().startswith(starters)
-
-    @staticmethod
-    def _normalize(text: str):
-        normalized = unicodedata.normalize("NFD", str(text).lower())
-        return "".join(char for char in normalized if unicodedata.category(char) != "Mn")
