@@ -25,6 +25,24 @@ class IntentRouter:
     MONITOR_SUMMARY_RE = re.compile(r"^\s*resumo\s+(?:de\s+)?trafego\s+de\s+rede\s*$", flags=re.IGNORECASE)
     BACKUP_NOW_RE = re.compile(r"^\s*(?:executar|rodar|fazer)\s+backup(?:\s+agora)?\s*$", flags=re.IGNORECASE)
     BACKUP_STATUS_RE = re.compile(r"^\s*status\s+(?:do\s+)?backup\s*$", flags=re.IGNORECASE)
+    TESTS_NOW_RE = re.compile(r"^\s*(?:executar|rodar|fazer)\s+testes(?:\s+agora)?\s*$", flags=re.IGNORECASE)
+    TESTS_STATUS_RE = re.compile(r"^\s*status\s+(?:dos\s+)?testes\s*$", flags=re.IGNORECASE)
+    SYSTEM_MONITOR_START_RE = re.compile(
+        r"^\s*(?:iniciar|ativar|ligar|comecar)\s+monitoramento\s+de\s+sistema\s*$",
+        flags=re.IGNORECASE,
+    )
+    SYSTEM_MONITOR_STOP_RE = re.compile(
+        r"^\s*(?:parar|desativar|desligar)\s+monitoramento\s+de\s+sistema\s*$",
+        flags=re.IGNORECASE,
+    )
+    SYSTEM_MONITOR_STATUS_RE = re.compile(
+        r"^\s*status\s+(?:do\s+)?monitoramento\s+de\s+sistema\s*$",
+        flags=re.IGNORECASE,
+    )
+    SYSTEM_MONITOR_SUMMARY_RE = re.compile(
+        r"^\s*resumo\s+(?:de\s+)?(?:recursos|cpu|ram)\s+do\s+sistema\s*$",
+        flags=re.IGNORECASE,
+    )
     PLUGIN_LIST_RE = re.compile(r"^\s*listar\s+plugins\s*$", flags=re.IGNORECASE)
     PLUGIN_RELOAD_RE = re.compile(r"^\s*(?:recarregar|atualizar)\s+plugins\s*$", flags=re.IGNORECASE)
     WIZARD_START_RE = re.compile(
@@ -193,6 +211,54 @@ class IntentRouter:
                 "response": "Consultando status do backup.",
                 "needs_action": True,
                 "action": "backup_status",
+            }
+
+        if self.TESTS_NOW_RE.match(content):
+            return {
+                "intent": "tests_run_now",
+                "response": "Executando testes agora.",
+                "needs_action": True,
+                "action": "tests_run_now",
+            }
+
+        if self.TESTS_STATUS_RE.match(content):
+            return {
+                "intent": "tests_status",
+                "response": "Consultando status dos testes periodicos.",
+                "needs_action": True,
+                "action": "tests_status",
+            }
+
+        if self.SYSTEM_MONITOR_START_RE.match(content):
+            return {
+                "intent": "system_monitor_start",
+                "response": "Iniciando monitoramento de CPU/RAM.",
+                "needs_action": True,
+                "action": "system_monitor_start",
+            }
+
+        if self.SYSTEM_MONITOR_STOP_RE.match(content):
+            return {
+                "intent": "system_monitor_stop",
+                "response": "Parando monitoramento de CPU/RAM.",
+                "needs_action": True,
+                "action": "system_monitor_stop",
+            }
+
+        if self.SYSTEM_MONITOR_STATUS_RE.match(content):
+            return {
+                "intent": "system_monitor_status",
+                "response": "Consultando status de CPU e memoria.",
+                "needs_action": True,
+                "action": "system_monitor_status",
+            }
+
+        if self.SYSTEM_MONITOR_SUMMARY_RE.match(content):
+            return {
+                "intent": "system_monitor_summary",
+                "response": "Gerando resumo de uso de CPU e RAM.",
+                "needs_action": True,
+                "action": "system_monitor_summary",
             }
 
         if self.PLUGIN_LIST_RE.match(content):

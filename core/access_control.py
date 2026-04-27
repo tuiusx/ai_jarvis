@@ -363,6 +363,9 @@ class AccessController:
             r"^(?:disparar)\s+evento\b",
             r"^(?:executar|rodar|fazer)\s+backup\b",
             r"^(?:status)\s+(?:do\s+)?backup\b",
+            r"^(?:executar|rodar|fazer)\s+testes\b",
+            r"^(?:status)\s+(?:dos\s+)?testes\b",
+            r"^(?:iniciar|ativar|ligar|comecar|parar|desativar|desligar|status|resumo)\s+(?:monitoramento\s+de\s+sistema|(?:recursos|cpu|ram)\s+do\s+sistema)\b",
             r"^(?:listar|recarregar|atualizar)\s+plugins\b",
         )
         for pattern in admin_patterns:

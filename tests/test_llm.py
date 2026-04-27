@@ -121,6 +121,15 @@ class LocalLLMTests(unittest.TestCase):
         self.assertEqual(result["path"], "state/backup.enc")
         self.assertEqual(result["password"], "segredo123")
 
+    def test_matches_periodic_tests_and_system_monitor_commands(self):
+        tests_now = self.llm.think({"content": "executar testes agora"}, "")
+        tests_status = self.llm.think({"content": "status testes"}, "")
+        monitor_status = self.llm.think({"content": "status monitoramento de sistema"}, "")
+
+        self.assertEqual(tests_now["intent"], "tests_run_now")
+        self.assertEqual(tests_status["intent"], "tests_status")
+        self.assertEqual(monitor_status["intent"], "system_monitor_status")
+
     def test_returns_safe_unknown_response_when_not_understood(self):
         result = self.llm.think({"content": "comando aleatorio"}, "")
         self.assertEqual(result["intent"], "unknown")

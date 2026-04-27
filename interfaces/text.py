@@ -169,5 +169,10 @@ def chat():
             context.backup_manager.close()
         except Exception:
             pass
+    if getattr(context, "system_monitor", None) is not None:
+        try:
+            context.system_monitor.close()
+        except Exception:
+            pass
 
     context.audit.log("app.stop_text_mode", mode=app_mode)

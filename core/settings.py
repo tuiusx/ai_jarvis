@@ -141,6 +141,24 @@ DEFAULT_SETTINGS = {
         "output_dir": "state/exports",
         "password_env": "JARVIS_BACKUP_PASSWORD",
         "interval_minutes": 0,
+        "periodic_tests": {
+            "enabled": True,
+            "interval_minutes": 0,
+            "command": "python -m pytest -q",
+            "timeout_seconds": 1200,
+            "workdir": ".",
+        },
+    },
+    "monitoring": {
+        "system_resources": {
+            "enabled": False,
+            "auto_start": False,
+            "interval_seconds": 10,
+            "history_size": 180,
+            "cpu_alert_percent": 90,
+            "memory_alert_percent": 90,
+            "alert_cooldown_seconds": 120,
+        },
     },
     "retention": {
         "enabled": True,

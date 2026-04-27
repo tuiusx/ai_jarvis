@@ -15,9 +15,14 @@ class BackupManagerTool(Tool):
         normalized = str(action or "status").strip().lower()
         if normalized == "run_now":
             return self.service.run_now(reason=str(kwargs.get("reason", "manual")))
+        if normalized == "run_tests_now":
+            return self.service.run_tests_now(reason=str(kwargs.get("reason", "manual")))
         if normalized == "status":
             status = self.service.status()
             return {"message": "Status do backup carregado.", "status": status}
+        if normalized == "tests_status":
+            status = self.service.status()
+            return {"message": "Status dos testes periodicos carregado.", "status": status.get("tests", {})}
         if normalized == "start":
             return self.service.start()
         if normalized == "stop":

@@ -103,6 +103,19 @@ class IntentRouterTests(unittest.TestCase):
         self.assertEqual(list_plugins["intent"], "plugin_list")
         self.assertEqual(reload_plugins["intent"], "plugin_reload")
 
+    def test_routes_periodic_tests_and_system_monitor_commands(self):
+        tests_now = self.router.route("executar testes agora")
+        tests_status = self.router.route("status testes")
+        monitor_start = self.router.route("iniciar monitoramento de sistema")
+        monitor_status = self.router.route("status monitoramento de sistema")
+        monitor_summary = self.router.route("resumo recursos do sistema")
+
+        self.assertEqual(tests_now["intent"], "tests_run_now")
+        self.assertEqual(tests_status["intent"], "tests_status")
+        self.assertEqual(monitor_start["intent"], "system_monitor_start")
+        self.assertEqual(monitor_status["intent"], "system_monitor_status")
+        self.assertEqual(monitor_summary["intent"], "system_monitor_summary")
+
 
 if __name__ == "__main__":
     unittest.main()

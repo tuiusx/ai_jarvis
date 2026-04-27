@@ -30,6 +30,7 @@ class Agent:
         critical_confirmation_require_pin: bool = True,
         tool_retry_attempts: int = 1,
         tool_retry_backoff_seconds: float = 0.2,
+        system_monitor=None,
     ):
         self.llm = llm
         self.memory = memory
@@ -50,6 +51,7 @@ class Agent:
         self.critical_confirmation_require_pin = bool(critical_confirmation_require_pin)
         self.tool_retry_attempts = max(0, int(tool_retry_attempts))
         self.tool_retry_backoff_seconds = max(0.0, float(tool_retry_backoff_seconds))
+        self.system_monitor = system_monitor
         self.pending_critical_commands = {}
         self.device_wizard_sessions = {}
         self._current_trace_id = None
@@ -483,6 +485,7 @@ class Agent:
             "access_control_enabled": bool(self.access_controller is not None and getattr(self.access_controller, "enabled", False)),
             "network_guard_enabled": bool(self.network_guard is not None and getattr(self.network_guard, "enabled", False)),
             "performance": performance,
+            "system_resources": self._system_resources_status(),
         }
 
     @staticmethod
@@ -502,7 +505,9 @@ class Agent:
             f"cleanup={cleanup_info} | semantic={status.get('semantic_memory', {}).get('ready', False)} | "
             f"access_control={status.get('access_control_enabled', False)} | "
             f"network_guard={status.get('network_guard_enabled', False)} | "
-            f"p95_ms={status.get('performance', {}).get('p95_total_ms', 0.0)}"
+            f"p95_ms={status.get('performance', {}).get('p95_total_ms', 0.0)} | "
+            f"cpu={status.get('system_resources', {}).get('cpu_percent', 'n/a')}% | "
+            f"ram={status.get('system_resources', {}).get('memory_percent', 'n/a')}%"
         )
 
     @staticmethod
@@ -692,3 +697,28 @@ class Agent:
     def _wizard_session_key(perception):
         user = str((perception or {}).get("user", "")).strip().lower()
         return user or "_default"
+
+    def _system_resources_status(self):
+        if self.system_monitor is None:
+            return {
+                "enabled": False,
+                "available": False,
+            }
+
+        try:
+            monitor_status = self.system_monitor.status()
+            latest = monitor_status.get("latest", {}) if isinstance(monitor_status, dict) else {}
+            return {
+                "enabled": bool(monitor_status.get("enabled", True)),
+                "available": True,
+                "running": bool(monitor_status.get("running", False)),
+                "cpu_percent": latest.get("cpu_percent"),
+                "memory_percent": latest.get("memory_percent"),
+                "memory_used_mb": latest.get("memory_used_mb"),
+                "memory_total_mb": latest.get("memory_total_mb"),
+            }
+        except Exception:
+            return {
+                "enabled": True,
+                "available": False,
+            }

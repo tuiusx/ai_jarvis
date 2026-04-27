@@ -144,6 +144,17 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(backup["steps"][0]["tool"], "backup_manager")
         self.assertEqual(plugins["steps"][0]["tool"], "plugin_manager")
 
+    def test_creates_tests_and_system_monitor_plans(self):
+        tests_now = self.planner.create_plan({"intent": "tests_run_now"})
+        tests_status = self.planner.create_plan({"intent": "tests_status"})
+        monitor_start = self.planner.create_plan({"intent": "system_monitor_start"})
+        monitor_status = self.planner.create_plan({"intent": "system_monitor_status"})
+
+        self.assertEqual(tests_now["steps"], [{"tool": "backup_manager", "action": "run_tests_now"}])
+        self.assertEqual(tests_status["steps"], [{"tool": "backup_manager", "action": "tests_status"}])
+        self.assertEqual(monitor_start["steps"], [{"tool": "system_monitor", "action": "start"}])
+        self.assertEqual(monitor_status["steps"], [{"tool": "system_monitor", "action": "status"}])
+
 
 class ToolManagerTests(unittest.TestCase):
     def setUp(self):

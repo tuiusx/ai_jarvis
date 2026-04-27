@@ -47,6 +47,12 @@ class Planner:
             "automation_event_trigger": "Disparando evento para regras.",
             "backup_now": "Executando backup.",
             "backup_status": "Consultando status de backup.",
+            "tests_run_now": "Executando testes agora.",
+            "tests_status": "Consultando status dos testes periodicos.",
+            "system_monitor_start": "Iniciando monitoramento de CPU/RAM.",
+            "system_monitor_stop": "Parando monitoramento de CPU/RAM.",
+            "system_monitor_status": "Consultando status de CPU/RAM.",
+            "system_monitor_summary": "Gerando resumo de CPU/RAM.",
             "plugin_list": "Listando plugins.",
             "plugin_reload": "Recarregando plugins.",
             "confirm_critical_action": "Confirmando comando critico.",
@@ -297,6 +303,24 @@ class Planner:
 
         if intent == "backup_status":
             return {"steps": [{"tool": "backup_manager", "action": "status"}]}
+
+        if intent == "tests_run_now":
+            return {"steps": [{"tool": "backup_manager", "action": "run_tests_now"}]}
+
+        if intent == "tests_status":
+            return {"steps": [{"tool": "backup_manager", "action": "tests_status"}]}
+
+        if intent == "system_monitor_start":
+            return {"steps": [{"tool": "system_monitor", "action": "start"}]}
+
+        if intent == "system_monitor_stop":
+            return {"steps": [{"tool": "system_monitor", "action": "stop"}]}
+
+        if intent == "system_monitor_status":
+            return {"steps": [{"tool": "system_monitor", "action": "status"}]}
+
+        if intent == "system_monitor_summary":
+            return {"steps": [{"tool": "system_monitor", "action": "summary"}]}
 
         if intent == "plugin_list":
             return {"steps": [{"tool": "plugin_manager", "action": "list"}]}

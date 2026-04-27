@@ -16,6 +16,7 @@ from core.planner import Planner
 from core.plugin_registry import PluginRegistry
 from core.rate_limit import CommandRateLimiter
 from core.settings import get_setting, load_settings
+from core.system_monitor import SystemMonitorService
 from tools.automation_hub import AutomationHubTool
 from tools.backup_manager import BackupManagerTool
 from tools.home_automation import HomeAutomationTool
@@ -24,6 +25,7 @@ from tools.network_discovery import NetworkDiscoveryTool
 from tools.plugin_manager import PluginManagerTool
 from tools.recorder import RecorderTool
 from tools.surveillance_tool import SurveillanceTool
+from tools.system_monitor import SystemMonitorTool
 from tools.web_search import WebSearchTool
 
 
@@ -43,6 +45,7 @@ class AppContext:
     plugin_registry: object | None
     automation_hub: object | None
     backup_manager: object | None
+    system_monitor: object | None
 
 
 class AppFactory:
@@ -171,14 +174,27 @@ class AppFactory:
         backup_cfg = dict(get_setting(settings, "backup", {}) or {})
         backup_manager = None
         if not self.lazy_init_enabled or bool(backup_cfg.get("enabled", True)):
+            periodic_tests_cfg = dict(backup_cfg.get("periodic_tests", {}) or {})
             backup_manager = BackupManagerService(
                 long_memory=long_memory,
                 output_dir=str(backup_cfg.get("output_dir", "state/exports")),
                 password_env=str(backup_cfg.get("password_env", "JARVIS_BACKUP_PASSWORD")),
                 interval_minutes=int(backup_cfg.get("interval_minutes", 0)),
+                periodic_tests_enabled=bool(periodic_tests_cfg.get("enabled", False)),
+                tests_interval_minutes=int(periodic_tests_cfg.get("interval_minutes", 0)),
+                tests_command=str(periodic_tests_cfg.get("command", "python -m pytest -q")),
+                tests_timeout_seconds=int(periodic_tests_cfg.get("timeout_seconds", 1200)),
+                tests_workdir=str(periodic_tests_cfg.get("workdir", ".")),
                 audit_logger=audit,
             )
         tools.register(BackupManagerTool(service=backup_manager))
+
+        system_monitor_cfg = dict(get_setting(settings, "monitoring.system_resources", {}) or {})
+        system_monitor = self._build_system_monitor(
+            cfg=system_monitor_cfg,
+            audit=audit,
+        )
+        tools.register(SystemMonitorTool(service=system_monitor))
 
         tools.register(PluginManagerTool(registry=plugin_registry))
         tools.register(NetworkDiscoveryTool())
@@ -211,6 +227,7 @@ class AppFactory:
             critical_confirmation_require_pin=bool(critical_confirmation_cfg.get("require_pin", True)),
             tool_retry_attempts=int(performance_cfg.get("tool_retry_attempts", 1)),
             tool_retry_backoff_seconds=float(performance_cfg.get("tool_retry_backoff_seconds", 0.2)),
+            system_monitor=system_monitor,
         )
 
         return AppContext(
@@ -228,6 +245,7 @@ class AppFactory:
             plugin_registry=plugin_registry,
             automation_hub=automation_hub,
             backup_manager=backup_manager,
+            system_monitor=system_monitor,
         )
 
     def _build_network_enforcement(self, cfg, audit):
@@ -285,4 +303,21 @@ class AppFactory:
             local_ips_provider=lambda: (network_guard.current_network_status().get("ips") or []),
             audit_logger=audit,
             auto_start=auto_start,
+        )
+
+    def _build_system_monitor(self, cfg, audit):
+        enabled = bool(cfg.get("enabled", False))
+        auto_start = bool(cfg.get("auto_start", False))
+        if self.lazy_init_enabled and not enabled and not auto_start:
+            return None
+
+        return SystemMonitorService(
+            enabled=enabled,
+            interval_seconds=int(cfg.get("interval_seconds", 10)),
+            history_size=int(cfg.get("history_size", 180)),
+            cpu_alert_percent=float(cfg.get("cpu_alert_percent", 90)),
+            memory_alert_percent=float(cfg.get("memory_alert_percent", 90)),
+            alert_cooldown_seconds=int(cfg.get("alert_cooldown_seconds", 120)),
+            auto_start=auto_start,
+            audit_logger=audit,
         )

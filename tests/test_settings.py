@@ -71,6 +71,9 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(get_setting(settings, "automation.enabled"))
         self.assertTrue(get_setting(settings, "backup.enabled"))
         self.assertEqual(get_setting(settings, "backup.password_env"), "JARVIS_BACKUP_PASSWORD")
+        self.assertTrue(get_setting(settings, "backup.periodic_tests.enabled"))
+        self.assertEqual(get_setting(settings, "backup.periodic_tests.command"), "python -m pytest -q")
+        self.assertTrue(get_setting(settings, "monitoring.system_resources.enabled"))
 
 
 if __name__ == "__main__":

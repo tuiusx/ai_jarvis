@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from core.backup_manager import BackupManagerService
@@ -44,6 +45,41 @@ class BackupManagerTests(unittest.TestCase):
             os.environ.pop("JARVIS_TEST_BACKUP_PASSWORD_MISSING", None)
             result = service.run_now(reason="unit")
         self.assertIn("Senha de backup", result["error"])
+
+    def test_runs_periodic_tests_now(self):
+        def fake_runner(args, timeout, workdir):
+            return SimpleNamespace(returncode=0, stdout="155 passed in 2.34s", stderr="")
+
+        service = BackupManagerService(
+            long_memory=FakeLongMemory(),
+            output_dir="state/exports-test",
+            periodic_tests_enabled=True,
+            tests_interval_minutes=0,
+            tests_command="python -m pytest -q",
+            command_runner=fake_runner,
+        )
+        result = service.run_tests_now(reason="unit")
+
+        self.assertIn("sucesso", result["message"].lower())
+        self.assertEqual(result["report"]["status"], "ok")
+        self.assertIn("passed", result["report"]["summary"])
+
+    def test_tests_status_reports_failures(self):
+        def fake_runner(args, timeout, workdir):
+            return SimpleNamespace(returncode=1, stdout="2 failed, 153 passed", stderr="")
+
+        service = BackupManagerService(
+            long_memory=FakeLongMemory(),
+            output_dir="state/exports-test",
+            periodic_tests_enabled=True,
+            tests_interval_minutes=0,
+            tests_command="python -m pytest -q",
+            command_runner=fake_runner,
+        )
+        result = service.run_tests_now(reason="unit")
+
+        self.assertIn("falhas", result["message"].lower())
+        self.assertEqual(result["report"]["status"], "failed")
 
 
 if __name__ == "__main__":

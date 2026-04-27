@@ -101,3 +101,18 @@ app:
 #   output_dir: "state/exports"
 #   password_env: "JARVIS_BACKUP_PASSWORD"
 #   interval_minutes: 60
+#   periodic_tests:
+#     enabled: true
+#     interval_minutes: 240
+#     command: "python -m pytest -q"
+#     timeout_seconds: 1200
+#     workdir: "."
+
+# Descomente para monitoramento de CPU/RAM com alerta
+# monitoring:
+#   system_resources:
+#     enabled: true
+#     auto_start: true
+#     interval_seconds: 10
+#     cpu_alert_percent: 90
+#     memory_alert_percent: 90

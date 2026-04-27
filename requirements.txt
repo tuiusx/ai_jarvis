@@ -19,3 +19,4 @@ face-recognition
 sentence-transformers
 faiss-cpu
 scapy
+psutil

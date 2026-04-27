@@ -38,9 +38,11 @@ def main():
                 "capabilities": [
                     "diagnostics",
                     "run_backup_now",
+                    "run_tests_now",
                     "reload_plugins",
                     "list_blocks",
                     "automation_status",
+                    "system_monitor_status",
                 ]
             }
 
@@ -57,6 +59,7 @@ def main():
                 "plugins": context.plugin_registry.status() if context.plugin_registry is not None else None,
                 "automation": context.automation_hub.status() if context.automation_hub is not None else None,
                 "backup": context.backup_manager.status() if context.backup_manager is not None else None,
+                "system_monitor": context.system_monitor.status() if getattr(context, "system_monitor", None) is not None else None,
             }
             return data
 
@@ -70,6 +73,11 @@ def main():
                 return {"error": "plugin_registry_not_configured"}
             return context.plugin_registry.reload()
 
+        if normalized == "run_tests_now":
+            if context.backup_manager is None:
+                return {"error": "backup_manager_not_configured"}
+            return context.backup_manager.run_tests_now(reason="dashboard")
+
         if normalized == "list_blocks":
             if context.network_enforcement is None:
                 return {"error": "network_enforcement_not_configured"}
@@ -79,6 +87,11 @@ def main():
             if context.automation_hub is None:
                 return {"error": "automation_not_configured"}
             return context.automation_hub.status()
+
+        if normalized == "system_monitor_status":
+            if getattr(context, "system_monitor", None) is None:
+                return {"error": "system_monitor_not_configured"}
+            return context.system_monitor.status()
 
         return {"error": f"admin_action_not_supported:{normalized}"}
 
@@ -136,6 +149,12 @@ def main():
         if backup_manager is not None:
             try:
                 backup_manager.close()
+            except Exception:
+                pass
+        system_monitor = getattr(context, "system_monitor", None)
+        if system_monitor is not None:
+            try:
+                system_monitor.close()
             except Exception:
                 pass
 
