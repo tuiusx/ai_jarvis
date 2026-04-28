@@ -331,7 +331,7 @@ class AccessController:
         if not normalized:
             return "guest"
 
-        if re.match(r"^(sair|exit|quit|ajuda|help|\?|status|memoria)\b", normalized):
+        if normalized in {"sair", "exit", "quit", "ajuda", "help", "?", "status", "memoria"}:
             return "guest"
 
         owner_only_patterns = (
@@ -366,6 +366,8 @@ class AccessController:
             r"^(?:executar|rodar|fazer)\s+testes\b",
             r"^(?:status)\s+(?:dos\s+)?testes\b",
             r"^(?:iniciar|ativar|ligar|comecar|parar|desativar|desligar|status|resumo)\s+(?:monitoramento\s+de\s+sistema|(?:recursos|cpu|ram)\s+do\s+sistema)\b",
+            r"^(?:status)\s+(?:da\s+)?manutencao\b",
+            r"^(?:executar|rodar|fazer)\s+manutencao\b",
             r"^(?:listar|recarregar|atualizar)\s+plugins\b",
         )
         for pattern in admin_patterns:

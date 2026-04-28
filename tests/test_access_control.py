@@ -167,6 +167,28 @@ class AccessControlTests(unittest.TestCase):
         self.assertTrue(allowed["allowed"])
         self.assertEqual(allowed.get("role"), "admin")
 
+    def test_maintenance_commands_require_admin_role(self):
+        identity = {"name": "dono", "confidence": 0.99}
+        controller = AccessController(
+            enabled=True,
+            owner_name="dono",
+            identity_provider=lambda: identity,
+            registered_people_provider=lambda: ["dono", "maria"],
+        )
+
+        identity.update({"name": "maria", "confidence": 0.99})
+        denied = controller.authorize_command("status manutencao")
+        self.assertFalse(denied["allowed"])
+        self.assertIn("exige papel 'admin'", denied["message"].lower())
+
+        identity.update({"name": "dono", "confidence": 0.99})
+        controller.authorize_command("definir papel maria admin")
+        identity.update({"name": "maria", "confidence": 0.99})
+        allowed = controller.authorize_command("executar manutencao agora")
+
+        self.assertTrue(allowed["allowed"])
+        self.assertEqual(allowed.get("role"), "admin")
+
     def test_liveness_failure_blocks_access(self):
         controller = AccessController(
             enabled=True,

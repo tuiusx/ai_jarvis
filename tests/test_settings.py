@@ -74,6 +74,9 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(get_setting(settings, "backup.periodic_tests.enabled"))
         self.assertEqual(get_setting(settings, "backup.periodic_tests.command"), "python -m pytest -q")
         self.assertTrue(get_setting(settings, "monitoring.system_resources.enabled"))
+        self.assertTrue(get_setting(settings, "maintenance.enabled"))
+        self.assertEqual(get_setting(settings, "maintenance.check_interval_seconds"), 300)
+        self.assertTrue(get_setting(settings, "maintenance.auto_repair"))
 
 
 if __name__ == "__main__":

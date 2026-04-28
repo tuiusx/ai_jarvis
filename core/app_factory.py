@@ -7,6 +7,7 @@ from core.automation_hub import AutomationHubService
 from core.audit import AuditLogger
 from core.backup_manager import BackupManagerService
 from core.intent_router import IntentRouter
+from core.maintenance_guard import MaintenanceGuardService
 from core.machine_registry import MachineRegistry
 from core.memory import LongTermMemory, ShortTermMemory
 from core.network_enforcement import LocalFirewallProvider, NetworkEnforcementService, OpenWrtProvider
@@ -20,6 +21,7 @@ from core.system_monitor import SystemMonitorService
 from tools.automation_hub import AutomationHubTool
 from tools.backup_manager import BackupManagerTool
 from tools.home_automation import HomeAutomationTool
+from tools.maintenance_guard import MaintenanceGuardTool
 from tools.manager import ToolManager
 from tools.network_discovery import NetworkDiscoveryTool
 from tools.plugin_manager import PluginManagerTool
@@ -46,6 +48,7 @@ class AppContext:
     automation_hub: object | None
     backup_manager: object | None
     system_monitor: object | None
+    maintenance_guard: object | None
 
 
 class AppFactory:
@@ -196,6 +199,16 @@ class AppFactory:
         )
         tools.register(SystemMonitorTool(service=system_monitor))
 
+        maintenance_cfg = dict(get_setting(settings, "maintenance", {}) or {})
+        maintenance_guard = self._build_maintenance_guard(
+            cfg=maintenance_cfg,
+            backup_manager=backup_manager,
+            system_monitor=system_monitor,
+            critical_confirmation_cfg=critical_confirmation_cfg,
+            audit=audit,
+        )
+        tools.register(MaintenanceGuardTool(service=maintenance_guard))
+
         tools.register(PluginManagerTool(registry=plugin_registry))
         tools.register(NetworkDiscoveryTool())
         tools.register(SurveillanceTool(callback=lambda evt: print(f"Evento de vigilancia: {evt}")))
@@ -246,6 +259,7 @@ class AppFactory:
             automation_hub=automation_hub,
             backup_manager=backup_manager,
             system_monitor=system_monitor,
+            maintenance_guard=maintenance_guard,
         )
 
     def _build_network_enforcement(self, cfg, audit):
@@ -319,5 +333,25 @@ class AppFactory:
             memory_alert_percent=float(cfg.get("memory_alert_percent", 90)),
             alert_cooldown_seconds=int(cfg.get("alert_cooldown_seconds", 120)),
             auto_start=auto_start,
+            audit_logger=audit,
+        )
+
+    def _build_maintenance_guard(self, cfg, backup_manager, system_monitor, critical_confirmation_cfg, audit):
+        enabled = bool(cfg.get("enabled", True))
+        auto_start = bool(cfg.get("auto_start", True))
+        if self.lazy_init_enabled and not enabled and not auto_start:
+            return None
+
+        admin_pin_env = str(cfg.get("admin_pin_env") or critical_confirmation_cfg.get("pin_env", "JARVIS_ADMIN_PIN"))
+        return MaintenanceGuardService(
+            enabled=enabled,
+            auto_start=auto_start,
+            check_interval_seconds=int(cfg.get("check_interval_seconds", 300)),
+            auto_repair=bool(cfg.get("auto_repair", True)),
+            max_backup_age_minutes=int(cfg.get("max_backup_age_minutes", 1440)),
+            max_tests_age_minutes=int(cfg.get("max_tests_age_minutes", 720)),
+            admin_pin_env=admin_pin_env,
+            backup_manager=backup_manager,
+            system_monitor=system_monitor,
             audit_logger=audit,
         )

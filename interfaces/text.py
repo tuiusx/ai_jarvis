@@ -174,5 +174,10 @@ def chat():
             context.system_monitor.close()
         except Exception:
             pass
+    if getattr(context, "maintenance_guard", None) is not None:
+        try:
+            context.maintenance_guard.close()
+        except Exception:
+            pass
 
     context.audit.log("app.stop_text_mode", mode=app_mode)

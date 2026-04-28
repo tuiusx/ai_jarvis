@@ -43,6 +43,8 @@ def main():
                     "list_blocks",
                     "automation_status",
                     "system_monitor_status",
+                    "maintenance_status",
+                    "maintenance_run_now",
                 ]
             }
 
@@ -60,6 +62,7 @@ def main():
                 "automation": context.automation_hub.status() if context.automation_hub is not None else None,
                 "backup": context.backup_manager.status() if context.backup_manager is not None else None,
                 "system_monitor": context.system_monitor.status() if getattr(context, "system_monitor", None) is not None else None,
+                "maintenance": context.maintenance_guard.status() if getattr(context, "maintenance_guard", None) is not None else None,
             }
             return data
 
@@ -92,6 +95,16 @@ def main():
             if getattr(context, "system_monitor", None) is None:
                 return {"error": "system_monitor_not_configured"}
             return context.system_monitor.status()
+
+        if normalized == "maintenance_status":
+            if getattr(context, "maintenance_guard", None) is None:
+                return {"error": "maintenance_guard_not_configured"}
+            return context.maintenance_guard.status()
+
+        if normalized == "maintenance_run_now":
+            if getattr(context, "maintenance_guard", None) is None:
+                return {"error": "maintenance_guard_not_configured"}
+            return context.maintenance_guard.check_now(reason="dashboard")
 
         return {"error": f"admin_action_not_supported:{normalized}"}
 
@@ -155,6 +168,12 @@ def main():
         if system_monitor is not None:
             try:
                 system_monitor.close()
+            except Exception:
+                pass
+        maintenance_guard = getattr(context, "maintenance_guard", None)
+        if maintenance_guard is not None:
+            try:
+                maintenance_guard.close()
             except Exception:
                 pass
 

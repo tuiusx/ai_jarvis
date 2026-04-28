@@ -116,3 +116,13 @@ app:
 #     interval_seconds: 10
 #     cpu_alert_percent: 90
 #     memory_alert_percent: 90
+
+# Descomente para checklist automatico de manutencao operacional
+# maintenance:
+#   enabled: true
+#   auto_start: true
+#   check_interval_seconds: 300
+#   auto_repair: true
+#   max_backup_age_minutes: 1440
+#   max_tests_age_minutes: 720
+#   admin_pin_env: "JARVIS_ADMIN_PIN"

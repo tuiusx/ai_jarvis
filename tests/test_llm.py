@@ -125,10 +125,14 @@ class LocalLLMTests(unittest.TestCase):
         tests_now = self.llm.think({"content": "executar testes agora"}, "")
         tests_status = self.llm.think({"content": "status testes"}, "")
         monitor_status = self.llm.think({"content": "status monitoramento de sistema"}, "")
+        maintenance_status = self.llm.think({"content": "status manutencao"}, "")
+        maintenance_run = self.llm.think({"content": "executar manutencao agora"}, "")
 
         self.assertEqual(tests_now["intent"], "tests_run_now")
         self.assertEqual(tests_status["intent"], "tests_status")
         self.assertEqual(monitor_status["intent"], "system_monitor_status")
+        self.assertEqual(maintenance_status["intent"], "maintenance_status")
+        self.assertEqual(maintenance_run["intent"], "maintenance_run_now")
 
     def test_returns_safe_unknown_response_when_not_understood(self):
         result = self.llm.think({"content": "comando aleatorio"}, "")

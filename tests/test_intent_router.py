@@ -109,12 +109,16 @@ class IntentRouterTests(unittest.TestCase):
         monitor_start = self.router.route("iniciar monitoramento de sistema")
         monitor_status = self.router.route("status monitoramento de sistema")
         monitor_summary = self.router.route("resumo recursos do sistema")
+        maintenance_status = self.router.route("status manutencao")
+        maintenance_run = self.router.route("executar manutencao agora")
 
         self.assertEqual(tests_now["intent"], "tests_run_now")
         self.assertEqual(tests_status["intent"], "tests_status")
         self.assertEqual(monitor_start["intent"], "system_monitor_start")
         self.assertEqual(monitor_status["intent"], "system_monitor_status")
         self.assertEqual(monitor_summary["intent"], "system_monitor_summary")
+        self.assertEqual(maintenance_status["intent"], "maintenance_status")
+        self.assertEqual(maintenance_run["intent"], "maintenance_run_now")
 
 
 if __name__ == "__main__":

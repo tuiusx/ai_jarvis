@@ -160,6 +160,15 @@ DEFAULT_SETTINGS = {
             "alert_cooldown_seconds": 120,
         },
     },
+    "maintenance": {
+        "enabled": True,
+        "auto_start": False,
+        "check_interval_seconds": 300,
+        "auto_repair": True,
+        "max_backup_age_minutes": 1440,
+        "max_tests_age_minutes": 720,
+        "admin_pin_env": "JARVIS_ADMIN_PIN",
+    },
     "retention": {
         "enabled": True,
         "auto_cleanup_on_start": True,

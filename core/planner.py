@@ -53,6 +53,8 @@ class Planner:
             "system_monitor_stop": "Parando monitoramento de CPU/RAM.",
             "system_monitor_status": "Consultando status de CPU/RAM.",
             "system_monitor_summary": "Gerando resumo de CPU/RAM.",
+            "maintenance_status": "Consultando checklist de manutencao.",
+            "maintenance_run_now": "Executando checklist de manutencao.",
             "plugin_list": "Listando plugins.",
             "plugin_reload": "Recarregando plugins.",
             "confirm_critical_action": "Confirmando comando critico.",
@@ -321,6 +323,12 @@ class Planner:
 
         if intent == "system_monitor_summary":
             return {"steps": [{"tool": "system_monitor", "action": "summary"}]}
+
+        if intent == "maintenance_status":
+            return {"steps": [{"tool": "maintenance_guard", "action": "status"}]}
+
+        if intent == "maintenance_run_now":
+            return {"steps": [{"tool": "maintenance_guard", "action": "check_now"}]}
 
         if intent == "plugin_list":
             return {"steps": [{"tool": "plugin_manager", "action": "list"}]}

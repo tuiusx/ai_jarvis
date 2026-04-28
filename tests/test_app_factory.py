@@ -38,6 +38,7 @@ security:
             self.assertEqual(context.app_mode, "dev")
             self.assertIsNone(context.network_monitor)
             self.assertIsNone(context.network_enforcement)
+            self.assertIsNotNone(context.maintenance_guard)
 
     def test_builds_network_services_when_enabled(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -58,6 +59,9 @@ security:
     enabled: true
   network_enforcement:
     enabled: true
+maintenance:
+  enabled: false
+  auto_start: false
 """.strip(),
                 encoding="utf-8",
             )
@@ -68,6 +72,7 @@ security:
 
             self.assertIsNotNone(context.network_monitor)
             self.assertIsNotNone(context.network_enforcement)
+            self.assertIsNone(context.maintenance_guard)
 
 
 if __name__ == "__main__":

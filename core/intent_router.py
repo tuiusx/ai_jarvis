@@ -43,6 +43,14 @@ class IntentRouter:
         r"^\s*resumo\s+(?:de\s+)?(?:recursos|cpu|ram)\s+do\s+sistema\s*$",
         flags=re.IGNORECASE,
     )
+    MAINTENANCE_STATUS_RE = re.compile(
+        r"^\s*status\s+(?:da\s+)?manutencao\s*$",
+        flags=re.IGNORECASE,
+    )
+    MAINTENANCE_RUN_RE = re.compile(
+        r"^\s*(?:executar|rodar|fazer)\s+manutencao(?:\s+agora)?\s*$",
+        flags=re.IGNORECASE,
+    )
     PLUGIN_LIST_RE = re.compile(r"^\s*listar\s+plugins\s*$", flags=re.IGNORECASE)
     PLUGIN_RELOAD_RE = re.compile(r"^\s*(?:recarregar|atualizar)\s+plugins\s*$", flags=re.IGNORECASE)
     WIZARD_START_RE = re.compile(
@@ -259,6 +267,22 @@ class IntentRouter:
                 "response": "Gerando resumo de uso de CPU e RAM.",
                 "needs_action": True,
                 "action": "system_monitor_summary",
+            }
+
+        if self.MAINTENANCE_STATUS_RE.match(content):
+            return {
+                "intent": "maintenance_status",
+                "response": "Consultando checklist de manutencao.",
+                "needs_action": True,
+                "action": "maintenance_status",
+            }
+
+        if self.MAINTENANCE_RUN_RE.match(content):
+            return {
+                "intent": "maintenance_run_now",
+                "response": "Executando checklist de manutencao agora.",
+                "needs_action": True,
+                "action": "maintenance_run_now",
             }
 
         if self.PLUGIN_LIST_RE.match(content):
